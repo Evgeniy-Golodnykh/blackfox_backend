@@ -1,10 +1,10 @@
-# blackfox_backend
+# blackfox website API
 
-### Описание
+### Description
 This is API for [blackfox website](https://fayustovna.github.io/progress)
 
-### Технологии
+### Technology
 Python, Django, DRF, Docker, Linux, GitHub Actions
 
-### Автор
-Евгений Голодных
+### Author
+Evgeniy Golodnykh
