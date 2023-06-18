@@ -1,4 +1,4 @@
-# blackfox website API
+# Blackfox website API
 
 ### Description
 This is API for [Blackfox website](https://fayustovna.github.io/progress)
