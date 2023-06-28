@@ -1,7 +1,8 @@
-"""Urls for API"""
+"""URLs for API version 1."""
 
 from django.urls import include, path
 
 urlpatterns = [
-    path('', include('api.v1.urls')),
+    path('', include('djoser.urls')),
+    path('auth/', include('djoser.urls.jwt'))
 ]
