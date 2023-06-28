@@ -3,6 +3,7 @@ from django.db import models
 
 
 class User(AbstractUser):
+    """Custom User model."""
 
     class Roles(models.TextChoices):
 
@@ -21,13 +22,13 @@ class User(AbstractUser):
         default=Roles.USER,
         verbose_name='role',
     )
-    confirmation_code = models.CharField(
-        max_length=40,
-        blank=True,
-        verbose_name='confirmation_code',
-    )
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
 
     class Meta:
+        verbose_name = 'User'
+        verbose_name_plural = 'Users'
         ordering = ['username']
 
     @property
