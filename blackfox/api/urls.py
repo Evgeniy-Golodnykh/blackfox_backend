@@ -11,5 +11,4 @@ urlpatterns = [
     path('login/', TokenObtainPairView.as_view(), name='login'),
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('', include('djoser.urls')),
-    path('auth/', include('djoser.urls.jwt'))
 ]
