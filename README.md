@@ -7,7 +7,7 @@ This is API for [Blackfox website](https://fayustovna.github.io/blackfox-nutriti
 Python, Django, DRF, Docker, GitHub Actions
 
 ### Authors
-[Evgeniy Golodnykh](https://github.com/Evgeniy-Golodnykh)
+[Evgeniy Golodnykh](https://github.com/Evgeniy-Golodnykh)  
 [Constantine Nazarov](https://github.com/K1N88)
 
 ### CI/CD pipeline status
