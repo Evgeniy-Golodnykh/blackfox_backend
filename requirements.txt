@@ -14,3 +14,8 @@ flake8-broken-line
 flake8-return
 flake8-isort==5.0.3
 pep8-naming
+beautifulsoup4==4.12.2
+lxml==4.9.2
+requests-html==0.10.0
+selenium==4.10.0
+webdriver-manager==3.8.6
