@@ -5,10 +5,18 @@ from djoser.views import UserViewSet
 from rest_framework_simplejwt.views import (
     TokenObtainPairView, TokenRefreshView,
 )
+from rest_framework.routers import DefaultRouter
+
+from api.views import DietViewSet
+
+
+router = DefaultRouter()
+router.register('diet', DietViewSet, basename='diet')
 
 urlpatterns = [
     path('signup/', UserViewSet.as_view({'post': 'create'}), name='signup'),
     path('login/', TokenObtainPairView.as_view(), name='login'),
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('', include('djoser.urls')),
+    path('', include(router.urls)),
 ]
