@@ -16,8 +16,7 @@ class DietPostSerializer(serializers.ModelSerializer):
         obj_in_data = get_data(url)
         obj_in_data['user'] = self.context['request'].user
         obj_in_data['url'] = url
-        diet = Diet.objects.create(**obj_in_data)
-        return diet
+        return Diet.objects.create(**obj_in_data)
 
     def update(self, instance, validated_data):
         url = validated_data['url']
