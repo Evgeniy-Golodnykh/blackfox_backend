@@ -201,7 +201,53 @@ class Diet(models.Model):
     )
 
     class Meta:
-        ordering = ['diet_date']
+        ordering = ['-diet_date']
 
     def __str__(self):
         return self.calories
+
+
+class Anthropometry(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='спортсмен',
+    )
+    measurement_date = models.DateField(
+        verbose_name='дата замера',
+        db_index=True
+    )
+    steps = models.PositiveIntegerField(
+        verbose_name='шаги',
+    )
+    weight = models.FloatField(
+        verbose_name='вес',
+        validators=[MinValueValidator(30), MaxValueValidator(250)]
+    )
+    height = models.FloatField(
+        verbose_name='рост',
+        validators=[MinValueValidator(30), MaxValueValidator(250)]
+    )
+    waist = models.FloatField(
+        verbose_name='талия',
+        validators=[MinValueValidator(30), MaxValueValidator(150)]
+    )
+    belly = models.FloatField(
+        verbose_name='живот',
+        validators=[MinValueValidator(30), MaxValueValidator(150)]
+    )
+    hips = models.FloatField(
+        verbose_name='бедра',
+        validators=[MinValueValidator(30), MaxValueValidator(150)]
+    )
+    chest = models.FloatField(
+        verbose_name='грудь',
+        validators=[MinValueValidator(30), MaxValueValidator(150)]
+    )
+
+    class Meta:
+        ordering = ['-measurement_date']
+
+    def __str__(self):
+        return f'''Данные {self.user.email} на {self.measurement_date}:
+                   вес {self.weight} шаги {self.steps}'''
