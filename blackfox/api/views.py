@@ -3,7 +3,7 @@ from rest_framework.permissions import SAFE_METHODS, IsAuthenticatedOrReadOnly
 
 from api.serializers import (DietSerializer, DietPostSerializer,
                              MeasurementSerializer, ProjectSerializer)
-from api.permissions import IsCoach
+from api.permissions import IsAdmin, IsCoach
 from training.models import Diet, Anthropometry, Project
 
 
@@ -32,7 +32,7 @@ class MeasurementViewSet(viewsets.ModelViewSet):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsCoach]
+    permission_classes = [IsAdmin, IsCoach]
     serializer_class = ProjectSerializer
     queryset = Project.objects.all()
     filter_backends = [filters.SearchFilter]
