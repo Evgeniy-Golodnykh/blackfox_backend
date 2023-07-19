@@ -2,8 +2,9 @@ from rest_framework import viewsets, filters
 from rest_framework.permissions import SAFE_METHODS, IsAuthenticatedOrReadOnly
 
 from api.serializers import (DietSerializer, DietPostSerializer,
-                             MeasurementSerializer)
-from training.models import Diet, Anthropometry
+                             MeasurementSerializer, ProjectSerializer)
+from api.permissions import IsCoach
+from training.models import Diet, Anthropometry, Project
 
 
 class DietViewSet(viewsets.ModelViewSet):
@@ -28,3 +29,14 @@ class MeasurementViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class ProjectViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsCoach]
+    serializer_class = ProjectSerializer
+    queryset = Project.objects.all()
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['user', 'coach', 'start_date']
+
+    def perform_create(self, serializer):
+        serializer.save(trainer=self.request.user)

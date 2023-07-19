@@ -7,12 +7,13 @@ from rest_framework_simplejwt.views import (
 )
 from rest_framework.routers import DefaultRouter
 
-from api.views import DietViewSet, MeasurementViewSet
+from api.views import DietViewSet, MeasurementViewSet, ProjectViewSet
 
 
 router = DefaultRouter()
 router.register('diet', DietViewSet, basename='diet')
 router.register('measurement', MeasurementViewSet, basename='measurement')
+router.register('project', ProjectViewSet, basename='project')
 
 urlpatterns = [
     path('signup/', UserViewSet.as_view({'post': 'create'}), name='signup'),
