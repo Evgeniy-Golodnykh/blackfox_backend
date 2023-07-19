@@ -11,6 +11,7 @@ class Diet(models.Model):
         User,
         on_delete=models.CASCADE,
         verbose_name='спортсмен',
+        related_name='diet',
     )
     url = models.URLField(
         verbose_name='ссылка на питание',
@@ -212,6 +213,7 @@ class Anthropometry(models.Model):
         User,
         on_delete=models.CASCADE,
         verbose_name='спортсмен',
+        related_name='anthropometry',
     )
     measurement_date = models.DateField(
         verbose_name='дата замера',
@@ -249,5 +251,40 @@ class Anthropometry(models.Model):
         ordering = ['-measurement_date']
 
     def __str__(self):
-        return f'''Данные {self.user.email} на {self.measurement_date}:
+        return f'''Данные {self.user.username} на {self.measurement_date}:
                    вес {self.weight} шаги {self.steps}'''
+
+
+class Project(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='спортсмен',
+        related_name='project',
+    )
+    coach = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='тренер',
+        related_name='coach',
+    )
+    start_date = models.DateField(
+        verbose_name='начало проекта',
+        db_index=True
+    )
+    deadline = models.DateField(
+        verbose_name='окончание проекта',
+        db_index=True
+    )
+    target_weight = models.FloatField(
+        verbose_name='целевой вес',
+        validators=[MinValueValidator(30), MaxValueValidator(250)]
+    )
+    is_closed = models.BooleanField(verbose_name='проект закрыт',
+                                    default=False)
+
+    class Meta:
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return f'Цель {self.target_weight} кг до {self.deadline}'
