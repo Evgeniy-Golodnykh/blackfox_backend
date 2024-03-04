@@ -31,10 +31,28 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
     )
     confirm_password = serializers.CharField(write_only=True, required=True)
     role = serializers.CharField(write_only=True, required=True)
+    first_name = serializers.CharField(
+        write_only=True,
+        required=True,
+        max_length=100
+    )
+    last_name = serializers.CharField(
+        write_only=True,
+        required=True,
+        max_length=100
+    )
 
     class Meta:
         model = User
-        fields = ('email', 'username', 'password', 'confirm_password', 'role')
+        fields = (
+            'email',
+            'username',
+            'password',
+            'confirm_password',
+            'role',
+            'first_name',
+            'last_name',
+        )
 
     def validate_username(self, value):
         if value.lower() == 'me':
@@ -57,11 +75,18 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         user = User.objects.create(
             username=validated_data['username'],
             email=validated_data['email'],
-            role=validated_data['role']
+            role=validated_data['role'].lower(),
+            first_name=validated_data['first_name'].capitalize(),
+            last_name=validated_data['last_name'].capitalize(),
         )
         user.set_password(validated_data['password'])
         user.save()
         return user
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        context = {'request': request}
+        return CustomUserSerializer(instance, context=context).data
 
 
 class CustomLoginSerializer(TokenObtainPairSerializer):
