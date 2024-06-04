@@ -15,6 +15,9 @@ ACCESS_TOKEN_URL = 'https://www.fatsecret.com/oauth/access_token'
 BASE_URL = 'https://platform.fatsecret.com/rest/server.api'
 CALLBACK_URL = os.getenv('FATSECRET_CALLBACK_URL')
 
+error_message = 'Missing FatSecret verifier or tokens'
+success_message = 'FatSecret account successfully linked'
+
 fatsecret = OAuth1Service(
     consumer_key=CONSUMER_KEY,
     consumer_secret=CONSUMER_SECRET,
@@ -26,7 +29,6 @@ fatsecret = OAuth1Service(
 
 
 class RequestTokenView(APIView):
-    permission_classes = [AllowAny]
 
     def get(self, request):
         request_token, request_token_secret = fatsecret.get_request_token(
@@ -35,6 +37,7 @@ class RequestTokenView(APIView):
         authorize_url = fatsecret.get_authorize_url(request_token)
         cache.set('request_token', request_token)
         cache.set('request_token_secret', request_token_secret)
+        cache.set('user', request.user)
         return Response({'authorize_url': authorize_url})
 
 
@@ -45,20 +48,22 @@ class AccessTokenView(APIView):
         verifier = request.query_params.get('oauth_verifier')
         request_token = cache.get('request_token')
         request_token_secret = cache.get('request_token_secret')
+        user = cache.get('user')
         cache.clear()
         if not verifier or not request_token or not request_token_secret:
             return Response(
-                {'error': 'Missing verifier or tokens'},
+                {'message': error_message},
                 status=status.HTTP_400_BAD_REQUEST
             )
         session = fatsecret.get_auth_session(
             request_token, request_token_secret,
             method='POST', data={'oauth_verifier': verifier}
         )
-        access_token = session.access_token
-        access_token_secret = session.access_token_secret
+        user.fatsecret_token = session.access_token
+        user.fatsecret_secret = session.access_token_secret
+        user.save()
 
-        return Response({
-            'access_token': access_token,
-            'access_token_secret': access_token_secret,
-        })
+        return Response(
+            {'message': success_message},
+            status=status.HTTP_200_OK
+        )
