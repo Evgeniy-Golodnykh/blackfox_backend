@@ -7,7 +7,7 @@ from rest_framework_simplejwt.views import (
 )
 from rest_framework.routers import DefaultRouter
 
-from api.fatsecret_views import RequestTokenView
+from api.fatsecret_views import AccessTokenView, RequestTokenView
 from api.views import DietViewSet, MeasurementViewSet, ProjectViewSet
 
 
@@ -22,5 +22,6 @@ urlpatterns = [
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('', include('djoser.urls')),
     path('fatsecret/request/', RequestTokenView.as_view(), name='request'),
+    path('fatsecret/access/', AccessTokenView.as_view(), name='access'),
     path('', include(router.urls)),
 ]

@@ -1,7 +1,10 @@
 import os
 
-from rest_framework.views import APIView
+from django.core.cache import cache
+from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rauth import OAuth1Service
 
 CONSUMER_KEY = os.getenv('FATSECRET_CONSUMER_KEY')
@@ -10,8 +13,7 @@ REQUEST_TOKEN_URL = 'https://www.fatsecret.com/oauth/request_token'
 AUTHORIZE_URL = 'https://www.fatsecret.com/oauth/authorize'
 ACCESS_TOKEN_URL = 'https://www.fatsecret.com/oauth/access_token'
 BASE_URL = 'https://platform.fatsecret.com/rest/server.api'
-
-print(CONSUMER_KEY, CONSUMER_SECRET, sep='\n---\n')
+CALLBACK_URL = os.getenv('FATSECRET_CALLBACK_URL')
 
 fatsecret = OAuth1Service(
     consumer_key=CONSUMER_KEY,
@@ -24,11 +26,39 @@ fatsecret = OAuth1Service(
 
 
 class RequestTokenView(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request):
         request_token, request_token_secret = fatsecret.get_request_token(
-            method='GET', params={'oauth_callback': 'oob'}
+            method='GET', params={'oauth_callback': CALLBACK_URL}
         )
         authorize_url = fatsecret.get_authorize_url(request_token)
-        request.session['request_token'] = request_token
-        request.session['request_token_secret'] = request_token_secret
+        cache.set('request_token', request_token)
+        cache.set('request_token_secret', request_token_secret)
         return Response({'authorize_url': authorize_url})
+
+
+class AccessTokenView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        verifier = request.query_params.get('oauth_verifier')
+        request_token = cache.get('request_token')
+        request_token_secret = cache.get('request_token_secret')
+        cache.clear()
+        if not verifier or not request_token or not request_token_secret:
+            return Response(
+                {'error': 'Missing verifier or tokens'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        session = fatsecret.get_auth_session(
+            request_token, request_token_secret,
+            method='POST', data={'oauth_verifier': verifier}
+        )
+        access_token = session.access_token
+        access_token_secret = session.access_token_secret
+
+        return Response({
+            'access_token': access_token,
+            'access_token_secret': access_token_secret,
+        })
