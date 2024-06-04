@@ -22,6 +22,14 @@ class User(AbstractUser):
         default=Roles.USER,
         verbose_name='role',
     )
+    fatsecret_token = models.CharField(
+        max_length=100,
+        verbose_name='fatsecret_token',
+    )
+    fatsecret_secret = models.CharField(
+        max_length=100,
+        verbose_name='fatsecret_secret',
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
