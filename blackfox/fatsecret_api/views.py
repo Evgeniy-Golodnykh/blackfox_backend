@@ -66,6 +66,7 @@ class AccessTokenView(APIView):
         user.fatsecret_token = session.access_token
         user.fatsecret_secret = session.access_token_secret
         user.save()
+        session.close()
 
         return Response(
             {'message': success_message},
@@ -87,11 +88,10 @@ class FoodDiaryView(APIView):
             token=(access_token, access_token_secret)
         )
         params = {'method': 'food_entries.get_month.v2', 'format': 'json'}
+        foods = session.get(BASE_URL, params=params).json()
+        session.close()
 
-        return Response(
-            session.get(BASE_URL, params=params).json(),
-            status=status.HTTP_200_OK
-        )
+        return Response(foods, status=status.HTTP_200_OK)
 
 
 class WeightDiaryView(APIView):
@@ -108,11 +108,7 @@ class WeightDiaryView(APIView):
             token=(access_token, access_token_secret)
         )
         params = {'method': 'weights.get_month.v2', 'format': 'json'}
+        weights = session.get(BASE_URL, params=params).json()
+        session.close()
 
-#        return Response(
-#            session.get(BASE_URL, params=params).json(),
-#            status=status.HTTP_200_OK
-#        )
-
-        res = session.get(BASE_URL, params=params)
-        return Response(res.text)
+        return Response(weights, status=status.HTTP_200_OK)
