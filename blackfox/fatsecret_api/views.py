@@ -15,7 +15,8 @@ ACCESS_TOKEN_URL = 'https://www.fatsecret.com/oauth/access_token'
 BASE_URL = 'https://platform.fatsecret.com/rest/server.api'
 CALLBACK_URL = os.getenv('FATSECRET_CALLBACK_URL')
 
-error_message = 'Missing FatSecret verifier or tokens'
+error_access_message = 'Missing FatSecret access tokens'
+error_request_message = 'Missing FatSecret verification code or request tokens'
 success_message = 'FatSecret account successfully linked'
 
 fatsecret = OAuth1Service(
@@ -38,11 +39,14 @@ class RequestTokenView(APIView):
         cache.set('request_token', request_token)
         cache.set('request_token_secret', request_token_secret)
         cache.set('user', request.user)
-        return Response({'authorize_url': authorize_url})
+        return Response(
+            {'authorize_url': authorize_url},
+            status=status.HTTP_200_OK
+        )
 
 
 class AccessTokenView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = (AllowAny,)
 
     def get(self, request):
         verifier = request.query_params.get('oauth_verifier')
@@ -52,7 +56,7 @@ class AccessTokenView(APIView):
         cache.clear()
         if not verifier or not request_token or not request_token_secret:
             return Response(
-                {'message': error_message},
+                {'message': error_request_message},
                 status=status.HTTP_400_BAD_REQUEST
             )
         session = fatsecret.get_auth_session(
@@ -65,5 +69,47 @@ class AccessTokenView(APIView):
 
         return Response(
             {'message': success_message},
+            status=status.HTTP_200_OK
+        )
+
+
+class FoodDiaryView(APIView):
+
+    def get(self, request):
+        access_token = request.user.fatsecret_token
+        access_token_secret = request.user.fatsecret_secret
+        if not access_token or not access_token_secret:
+            return Response(
+                {'message': error_access_message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        session = fatsecret.get_session(
+            token=(access_token, access_token_secret)
+        )
+        params = {'method': 'food_entries.get_month', 'format': 'json'}
+
+        return Response(
+            session.get(BASE_URL, params=params).json(),
+            status=status.HTTP_200_OK
+        )
+
+
+class WeightDiaryView(APIView):
+
+    def get(self, request):
+        access_token = request.user.fatsecret_token
+        access_token_secret = request.user.fatsecret_secret
+        if not access_token or not access_token_secret:
+            return Response(
+                {'message': error_access_message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        session = fatsecret.get_session(
+            token=(access_token, access_token_secret)
+        )
+        params = {'method': 'weights.get_month', 'format': 'json'}
+
+        return Response(
+            session.get(BASE_URL, params=params).json(),
             status=status.HTTP_200_OK
         )
