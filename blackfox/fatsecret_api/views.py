@@ -109,7 +109,10 @@ class WeightDiaryView(APIView):
         )
         params = {'method': 'weights.get_month.v2', 'format': 'json'}
 
-        return Response(
-            session.get(BASE_URL, params=params).json(),
-            status=status.HTTP_200_OK
-        )
+#        return Response(
+#            session.get(BASE_URL, params=params).json(),
+#            status=status.HTTP_200_OK
+#        )
+
+        res = session.get(BASE_URL, params=params)
+        return Response(res.text)
