@@ -86,7 +86,7 @@ class FoodDiaryView(APIView):
         session = fatsecret.get_session(
             token=(access_token, access_token_secret)
         )
-        params = {'method': 'food_entries.get_month', 'format': 'json'}
+        params = {'method': 'food_entries.get_month.v2', 'format': 'json'}
 
         return Response(
             session.get(BASE_URL, params=params).json(),
@@ -107,7 +107,7 @@ class WeightDiaryView(APIView):
         session = fatsecret.get_session(
             token=(access_token, access_token_secret)
         )
-        params = {'method': 'weights.get_month', 'format': 'json'}
+        params = {'method': 'weights.get_month.v2', 'format': 'json'}
 
         return Response(
             session.get(BASE_URL, params=params).json(),
