@@ -10,4 +10,4 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 
 COPY blackfox/ .
 
-CMD ["gunicorn", "blackfox.wsgi:application", "--bind", "0:8000", "--workers=3", "--timeout=600"]
+CMD ["gunicorn", "blackfox.wsgi:application", "--bind", "0:8000"]
