@@ -3,6 +3,10 @@ services:
   backend:
     image: evgenferrum/blackfox:latest
     restart: always
+    ports:
+      - '8000:8000'
+    environment:
+      - TZ=Europe/Moscow
     volumes:
       - static_value:/app/static/
       - media_value:/app/media/
@@ -13,7 +17,9 @@ services:
     image: nginx:1.21.3
     restart: always
     ports:
-      - "80:80"
+      - '80:80'
+    environment:
+      - TZ=Europe/Moscow
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - static_value:/var/html/static/
