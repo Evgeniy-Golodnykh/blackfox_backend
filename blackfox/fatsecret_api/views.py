@@ -88,11 +88,10 @@ class FoodDiaryView(APIView):
             token=(access_token, access_token_secret)
         )
         params = {'method': 'food_entries.get_month.v2', 'format': 'json'}
-        foods = session.get(BASE_URL, params=params)
-        foods = foods.json
+        foods = session.get(BASE_URL, params=params).json()
         session.close()
 
-        return Response({'result': 'result'}, status=status.HTTP_200_OK)
+        return Response(foods, status=status.HTTP_200_OK)
 
 
 class WeightDiaryView(APIView):
