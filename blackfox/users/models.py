@@ -25,10 +25,14 @@ class User(AbstractUser):
     fatsecret_token = models.CharField(
         max_length=100,
         verbose_name='fatsecret_token',
+        blank=True,
+        null=True,
     )
     fatsecret_secret = models.CharField(
         max_length=100,
         verbose_name='fatsecret_secret',
+        blank=True,
+        null=True,
     )
 
     USERNAME_FIELD = 'email'
