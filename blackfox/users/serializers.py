@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -9,6 +10,8 @@ User = get_user_model()
 class CustomUserSerializer(serializers.ModelSerializer):
     """A serializer to read/update User instances."""
 
+    fatsecret_account = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = User
         fields = (
@@ -17,7 +20,12 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'role',
+            'fatsecret_account',
         )
+
+    def get_fatsecret_account(self, obj):
+        user = get_object_or_404(User, email=obj.email)
+        return user.fatsecret_token is not None
 
 
 class CustomUserCreateSerializer(serializers.ModelSerializer):
