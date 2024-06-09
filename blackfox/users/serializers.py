@@ -105,4 +105,5 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
         data['email'] = self.user.email
         data['username'] = self.user.username
         data['role'] = self.user.role
+        data['fatsecret_account'] = self.user.fatsecret_token is not None
         return data
