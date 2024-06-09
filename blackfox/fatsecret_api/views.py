@@ -96,7 +96,6 @@ class FatsecretDataView(APIView):
         )
 
         date = request.query_params.get('date')
-        print(date)
         if date:
             try:
                 self.params['date'] = unix_date_converter(date)
