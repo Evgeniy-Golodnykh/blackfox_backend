@@ -1,4 +1,5 @@
 import os
+import datetime as dt
 
 from django.core.cache import cache
 from django.shortcuts import redirect
@@ -16,6 +17,7 @@ ACCESS_TOKEN_URL = 'https://www.fatsecret.com/oauth/access_token'
 BASE_URL = 'https://platform.fatsecret.com/rest/server.api'
 CALLBACK_URL = os.getenv('FATSECRET_CALLBACK_URL')
 
+error_date_message = 'Incorrect date format, should be YYYY-MM-DD or YYMMDD'
 error_request_message = 'Missing FatSecret verification code or request tokens'
 success_message = 'FatSecret account successfully linked'
 
@@ -29,6 +31,13 @@ fatsecret = OAuth1Service(
 )
 
 
+def unix_date_converter(date):
+    epoch = dt.date.fromtimestamp(0)
+    if type(date) is int:
+        return epoch + dt.timedelta(date)
+    return (dt.date.fromisoformat(date) - epoch).days
+
+
 class RequestTokenView(APIView):
 
     def get(self, request):
@@ -36,9 +45,7 @@ class RequestTokenView(APIView):
             method='GET', params={'oauth_callback': CALLBACK_URL}
         )
         authorize_url = fatsecret.get_authorize_url(request_token)
-        cache.set('request_token', request_token)
-        cache.set('request_token_secret', request_token_secret)
-        cache.set('user', request.user)
+        cache.set(request_token, (request_token_secret, request.user), 900)
 
         return Response(
             {'authorize_url': authorize_url},
@@ -51,10 +58,9 @@ class AccessTokenView(APIView):
 
     def get(self, request):
         verifier = request.query_params.get('oauth_verifier')
-        request_token = cache.get('request_token')
-        request_token_secret = cache.get('request_token_secret')
-        user = cache.get('user')
-        cache.clear()
+        request_token = request.query_params.get('oauth_token')
+        request_token_secret, user = cache.get(request_token, (None, None))
+        cache.delete(request_token)
         if not verifier or not request_token or not request_token_secret:
             return Response(
                 {'message': error_request_message},
@@ -88,14 +94,30 @@ class FatsecretDataView(APIView):
         session = fatsecret.get_session(
             token=(access_token, access_token_secret)
         )
-        data = session.get(BASE_URL, params=self.params).json()
+
+        date = request.query_params.get('date')
+        print(date)
+        if date:
+            try:
+                self.params['date'] = unix_date_converter(date)
+            except ValueError:
+                return Response(
+                    {'message': error_date_message},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        fatsecret_data = session.get(BASE_URL, params=self.params).json()
         session.close()
 
-        return Response(data, status=status.HTTP_200_OK)
+        return Response(fatsecret_data, status=status.HTTP_200_OK)
 
 
-class FoodDiaryView(FatsecretDataView):
+class FoodDiaryMonthlyView(FatsecretDataView):
     params = {'method': 'food_entries.get_month.v2', 'format': 'json'}
+
+
+class FoodDiaryDailyView(FatsecretDataView):
+    params = {'method': 'food_entries.get.v2', 'format': 'json'}
 
 
 class WeightDiaryView(FatsecretDataView):
