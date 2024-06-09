@@ -69,6 +69,7 @@ jobs:
         script: |
             sudo docker-compose stop
             sudo docker-compose rm -f backend
+            sudo docker-compose rm -f nginx
             sudo docker image rm -f ${{ secrets.DOCKER_USERNAME }}/blackfox:latest
             touch .env
             echo DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} >> .env
