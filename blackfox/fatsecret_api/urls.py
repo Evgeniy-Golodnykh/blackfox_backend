@@ -1,10 +1,9 @@
 """URLs for connection to FatSecret API"""
 
 from django.urls import path
-
 from fatsecret_api.views import (
     AccessTokenView, FoodDiaryDailyView, FoodDiaryMonthlyView,
-    RequestTokenView, WeightDiaryView
+    RequestTokenView, WeightDiaryView,
 )
 
 urlpatterns = [
