@@ -2,17 +2,15 @@
 
 from django.urls import include, path
 from djoser.views import UserViewSet
+from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (
     TokenObtainPairView, TokenRefreshView,
 )
-from rest_framework.routers import DefaultRouter
 
-from api.views import DietViewSet, MeasurementViewSet, ProjectViewSet
-
+from api.views import FitnessDiaryViewSet, ProjectViewSet
 
 router = DefaultRouter()
-router.register('diet', DietViewSet, basename='diet')
-router.register('measurement', MeasurementViewSet, basename='measurement')
+router.register('fitness_diary', FitnessDiaryViewSet, basename='fitness_diary')
 router.register('project', ProjectViewSet, basename='project')
 
 urlpatterns = [
