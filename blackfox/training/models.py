@@ -18,9 +18,14 @@ class FitnessDiary(models.Model):
         verbose_name='дата питания',
         db_index=True
     )
-    calories = models.PositiveIntegerField(
+    calories_actual = models.PositiveIntegerField(
         default=0,
-        verbose_name='калории',
+        verbose_name='калории потребленные',
+        validators=[MinValueValidator(0), MaxValueValidator(10_000)]
+    )
+    calories_target = models.PositiveIntegerField(
+        default=0,
+        verbose_name='калории запланированные',
         validators=[MinValueValidator(0), MaxValueValidator(10_000)]
     )
     carbohydrate = models.FloatField(
@@ -81,8 +86,10 @@ class Project(models.Model):
         verbose_name='целевой вес',
         validators=[MinValueValidator(30), MaxValueValidator(250)]
     )
-    is_closed = models.BooleanField(verbose_name='проект закрыт',
-                                    default=False)
+    is_closed = models.BooleanField(
+        verbose_name='проект закрыт',
+        default=False
+    )
 
     class Meta:
         ordering = ['-start_date']
