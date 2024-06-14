@@ -7,10 +7,10 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView, TokenRefreshView,
 )
 
-from api.views import FitnessDiaryViewSet, ProjectViewSet
+from api.views import FoodDiaryViewSet, ProjectViewSet
 
 router = DefaultRouter()
-router.register('fitness_diary', FitnessDiaryViewSet, basename='fitness_diary')
+router.register('fitness_diary', FoodDiaryViewSet, basename='food_diary')
 router.register('project', ProjectViewSet, basename='project')
 
 urlpatterns = [

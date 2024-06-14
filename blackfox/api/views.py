@@ -2,14 +2,14 @@ from rest_framework import filters, viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 from api.permissions import IsAdmin, IsCoach
-from api.serializers import FitnessDiarySerializer, ProjectSerializer
-from training.models import FitnessDiary, Project
+from api.serializers import FoodDiarySerializer, ProjectSerializer
+from training.models import FoodDiary, Project
 
 
-class FitnessDiaryViewSet(viewsets.ModelViewSet):
+class FoodDiaryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
-    serializer_class = FitnessDiarySerializer
-    queryset = FitnessDiary.objects.all()
+    serializer_class = FoodDiarySerializer
+    queryset = FoodDiary.objects.all()
     filter_backends = [filters.SearchFilter]
     search_fields = ['user', 'date']
 

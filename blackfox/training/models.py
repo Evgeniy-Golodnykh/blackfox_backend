@@ -5,8 +5,8 @@ from django.db import models
 User = get_user_model()
 
 
-class FitnessDiary(models.Model):
-    """FitnessDiary model for FatSecret data"""
+class FoodDiary(models.Model):
+    """FoodDiary model for FatSecret data"""
 
     user = models.ForeignKey(
         User,
@@ -19,33 +19,52 @@ class FitnessDiary(models.Model):
         db_index=True
     )
     calories_actual = models.PositiveIntegerField(
-        default=0,
-        verbose_name='калории потребленные',
+        verbose_name='калории факт',
         validators=[MinValueValidator(0), MaxValueValidator(10_000)]
     )
     calories_target = models.PositiveIntegerField(
-        default=0,
-        verbose_name='калории запланированные',
+        verbose_name='калории план',
         validators=[MinValueValidator(0), MaxValueValidator(10_000)]
     )
-    carbohydrate = models.FloatField(
-        default=0,
-        verbose_name='углеводы',
+    carbohydrate_actual = models.FloatField(
+        verbose_name='углеводы факт',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)]
     )
-    fat = models.FloatField(
-        default=0,
-        verbose_name='жиры',
+    carbohydrate_target = models.FloatField(
+        verbose_name='углеводы план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)]
     )
-    protein = models.FloatField(
-        default=0,
-        verbose_name='белки',
+    fat_actual = models.FloatField(
+        verbose_name='жиры факт',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)]
     )
-    weight = models.FloatField(
-        verbose_name='вес',
-        validators=[MinValueValidator(30), MaxValueValidator(250)]
+    fat_target = models.FloatField(
+        verbose_name='жиры план',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+    )
+    fiber_actual = models.FloatField(
+        verbose_name='пищевые волокна факт',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+    )
+    fiber_target = models.FloatField(
+        verbose_name='пищевые волокна план',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+    )
+    protein_actual = models.FloatField(
+        verbose_name='белки факт',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+    )
+    protein_target = models.FloatField(
+        verbose_name='белки план',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+    )
+    sugar_actual = models.FloatField(
+        verbose_name='сахар факт',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+    )
+    sugar_target = models.FloatField(
+        verbose_name='сахар план',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
     )
 
     class Meta:
@@ -53,7 +72,7 @@ class FitnessDiary(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=('user', 'date'),
-                name='unique_diets'
+                name='unique_food_diary'
             )
         ]
 

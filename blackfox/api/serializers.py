@@ -1,14 +1,14 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from training.models import FitnessDiary, Project
+from training.models import FoodDiary, Project
 
 User = get_user_model()
 
 
-class FitnessDiarySerializer(serializers.ModelSerializer):
+class FoodDiarySerializer(serializers.ModelSerializer):
     class Meta:
-        model = FitnessDiary
+        model = FoodDiary
         exclude = ['id']
 
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from training.models import FitnessDiary, Project
+from training.models import FoodDiary, Project
 
-admin.site.register(FitnessDiary)
+admin.site.register(FoodDiary)
 admin.site.register(Project)
