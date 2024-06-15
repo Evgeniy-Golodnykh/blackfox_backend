@@ -5,66 +5,149 @@ from django.db import models
 User = get_user_model()
 
 
-class FoodDiary(models.Model):
-    """FoodDiary model for FatSecret data"""
-
+class BodyStatsDiary(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         verbose_name='спортсмен',
-        related_name='diet',
+        related_name='bodystats_diary',
     )
     date = models.DateField(
         verbose_name='дата питания',
-        db_index=True
+        db_index=True,
+    )
+    abdominal = models.FloatField(
+        verbose_name='живот',
+        validators=[MinValueValidator(30), MaxValueValidator(250)],
+        blank=True,
+        null=True,
+    )
+    chest = models.FloatField(
+        verbose_name='грудь',
+        validators=[MinValueValidator(30), MaxValueValidator(250)],
+        blank=True,
+        null=True,
+    )
+    hips = models.FloatField(
+        verbose_name='бедра',
+        validators=[MinValueValidator(30), MaxValueValidator(250)],
+        blank=True,
+        null=True,
+    )
+    neck = models.FloatField(
+        verbose_name='шея',
+        validators=[MinValueValidator(20), MaxValueValidator(100)],
+        blank=True,
+        null=True,
+    )
+    waist = models.FloatField(
+        verbose_name='талия',
+        validators=[MinValueValidator(30), MaxValueValidator(250)],
+        blank=True,
+        null=True,
+    )
+    weight = models.FloatField(
+        verbose_name='вес',
+        validators=[MinValueValidator(30), MaxValueValidator(250)],
+        blank=True,
+        null=True,
+    )
+
+    class Meta:
+        ordering = ['-date']
+        constraints = [
+            models.UniqueConstraint(
+                fields=('user', 'date'),
+                name='unique_bodystats_diary'
+            )
+        ]
+
+    def __str__(self):
+        return f'Дневник параметров {self.user.username} за {self.date} г.'
+
+
+class FoodDiary(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='спортсмен',
+        related_name='food_diary',
+    )
+    date = models.DateField(
+        verbose_name='дата питания',
+        db_index=True,
     )
     calories_actual = models.PositiveIntegerField(
         verbose_name='калории факт',
-        validators=[MinValueValidator(0), MaxValueValidator(10_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(10_000)],
+        blank=True,
+        null=True,
     )
     calories_target = models.PositiveIntegerField(
         verbose_name='калории план',
-        validators=[MinValueValidator(0), MaxValueValidator(10_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(10_000)],
+        blank=True,
+        null=True,
     )
     carbohydrate_actual = models.FloatField(
         verbose_name='углеводы факт',
-        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
     )
     carbohydrate_target = models.FloatField(
         verbose_name='углеводы план',
-        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
     )
     fat_actual = models.FloatField(
         verbose_name='жиры факт',
-        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
     )
     fat_target = models.FloatField(
         verbose_name='жиры план',
-        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
     )
     fiber_actual = models.FloatField(
         verbose_name='пищевые волокна факт',
-        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
     )
     fiber_target = models.FloatField(
         verbose_name='пищевые волокна план',
-        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
     )
     protein_actual = models.FloatField(
         verbose_name='белки факт',
-        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
     )
     protein_target = models.FloatField(
         verbose_name='белки план',
-        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
     )
     sugar_actual = models.FloatField(
         verbose_name='сахар факт',
-        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
     )
     sugar_target = models.FloatField(
         verbose_name='сахар план',
-        validators=[MinValueValidator(0), MaxValueValidator(1_000)]
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
     )
 
     class Meta:
@@ -95,19 +178,19 @@ class Project(models.Model):
     )
     start_date = models.DateField(
         verbose_name='начало проекта',
-        db_index=True
+        db_index=True,
     )
     deadline = models.DateField(
         verbose_name='окончание проекта',
-        db_index=True
+        db_index=True,
     )
     target_weight = models.FloatField(
         verbose_name='целевой вес',
-        validators=[MinValueValidator(30), MaxValueValidator(250)]
+        validators=[MinValueValidator(30), MaxValueValidator(250)],
     )
     is_closed = models.BooleanField(
         verbose_name='проект закрыт',
-        default=False
+        default=False,
     )
 
     class Meta:

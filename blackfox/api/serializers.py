@@ -1,9 +1,15 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from training.models import FoodDiary, Project
+from training.models import BodyStatsDiary, FoodDiary, Project
 
 User = get_user_model()
+
+
+class BodyStatsDiarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BodyStatsDiary
+        exclude = ['id']
 
 
 class FoodDiarySerializer(serializers.ModelSerializer):
