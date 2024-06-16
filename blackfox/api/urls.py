@@ -10,10 +10,8 @@ from rest_framework_simplejwt.views import (
 from api.views import BodyStatsDiaryViewSet, FoodDiaryViewSet, ProjectViewSet
 
 router = DefaultRouter()
-router.register(
-    'bodystats_diary', BodyStatsDiaryViewSet, basename='bodystats_diary'
-)
-router.register('food_diary', FoodDiaryViewSet, basename='food_diary')
+router.register('bodystats', BodyStatsDiaryViewSet, basename='bodystats')
+router.register('food', FoodDiaryViewSet, basename='food')
 router.register('project', ProjectViewSet, basename='project')
 
 urlpatterns = [
