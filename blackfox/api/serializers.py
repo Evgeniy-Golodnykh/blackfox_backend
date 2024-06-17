@@ -29,7 +29,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     coach = UserSerializer(read_only=True)
     start_date = serializers.DateField()
     deadline = serializers.DateField()
-    target_weight = serializers.FloatField(max_value=250, min_value=30)
+    target_weight = serializers.FloatField(min_value=30, max_value=250)
 
     class Meta:
         model = Project

@@ -184,6 +184,30 @@ class Project(models.Model):
         verbose_name='окончание проекта',
         db_index=True,
     )
+    target_calories = models.PositiveIntegerField(
+        verbose_name='калории план',
+        validators=[MinValueValidator(0), MaxValueValidator(10_000)],
+    )
+    target_carbohydrate = models.FloatField(
+        verbose_name='углеводы план',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+    )
+    target_fat = models.FloatField(
+        verbose_name='жиры план',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+    )
+    target_fiber = models.FloatField(
+        verbose_name='пищевые волокна план',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+    )
+    target_protein = models.FloatField(
+        verbose_name='белки план',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+    )
+    target_sugar = models.FloatField(
+        verbose_name='сахар план',
+        validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+    )
     target_weight = models.FloatField(
         verbose_name='целевой вес',
         validators=[MinValueValidator(30), MaxValueValidator(250)],
