@@ -1,26 +1,30 @@
-from rest_framework import viewsets, filters
+from rest_framework import filters, viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
-from api.serializers import (DietSerializer,
-                             MeasurementSerializer, ProjectSerializer)
 from api.permissions import IsAdmin, IsCoach
-from training.models import Diet, Anthropometry, Project
+from api.serializers import (
+    BodyStatsDiarySerializer, FoodDiarySerializer, ProjectSerializer,
+)
+from training.models import BodyStatsDiary, FoodDiary, Project
 
 
-class DietViewSet(viewsets.ModelViewSet):
+class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
-    serializer_class = DietSerializer
-    queryset = Diet.objects.all()
+    serializer_class = BodyStatsDiarySerializer
+    queryset = BodyStatsDiary.objects.all()
     filter_backends = [filters.SearchFilter]
-    search_fields = ['user', 'diet_date']
+    search_fields = ['user', 'date']
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
-class MeasurementViewSet(viewsets.ModelViewSet):
+class FoodDiaryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
-    serializer_class = MeasurementSerializer
-    queryset = Anthropometry.objects.all()
+    serializer_class = FoodDiarySerializer
+    queryset = FoodDiary.objects.all()
     filter_backends = [filters.SearchFilter]
-    search_fields = ['user', 'measurement_date']
+    search_fields = ['user', 'date']
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
