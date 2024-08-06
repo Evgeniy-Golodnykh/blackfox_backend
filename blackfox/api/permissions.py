@@ -7,7 +7,7 @@ class IsAdmin(permissions.BasePermission):
     message = 'Only admin can perform this.'
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_admin
+        return request.user.is_authenticated and request.user.role == 'admin'
 
 
 class IsCoach(permissions.BasePermission):
@@ -16,4 +16,4 @@ class IsCoach(permissions.BasePermission):
     message = 'Only coach can perform this.'
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.coach
+        return request.user.is_authenticated and request.user.role == 'coach'

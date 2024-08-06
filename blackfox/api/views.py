@@ -31,7 +31,7 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdmin, IsCoach]
+    permission_classes = [(IsAdmin | IsCoach)]
     serializer_class = ProjectSerializer
     queryset = Project.objects.all()
     filter_backends = [filters.SearchFilter]
