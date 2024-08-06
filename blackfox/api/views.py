@@ -3,7 +3,8 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 from api.permissions import IsAdmin, IsCoach
 from api.serializers import (
-    BodyStatsDiarySerializer, FoodDiarySerializer, ProjectSerializer,
+    BodyStatsDiarySerializer, CreateUpdateProjectSerializer,
+    FoodDiarySerializer, ProjectSerializer,
 )
 from training.models import BodyStatsDiary, FoodDiary, Project
 
@@ -31,11 +32,12 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    permission_classes = [(IsAdmin | IsCoach)]
-    serializer_class = ProjectSerializer
+    permission_classes = [IsAdmin | IsCoach]
     queryset = Project.objects.all()
     filter_backends = [filters.SearchFilter]
     search_fields = ['user', 'coach', 'start_date']
 
-    def perform_create(self, serializer):
-        serializer.save(trainer=self.request.user)
+    def get_serializer_class(self):
+        if self.action in ('create', 'partial_update'):
+            return CreateUpdateProjectSerializer
+        return ProjectSerializer
