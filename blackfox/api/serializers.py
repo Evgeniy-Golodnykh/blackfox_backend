@@ -12,7 +12,7 @@ class BodyStatsDiarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BodyStatsDiary
-        exclude = ['id']
+        exclude = ['id',]
 
 
 class FoodDiarySerializer(serializers.ModelSerializer):
@@ -20,7 +20,7 @@ class FoodDiarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FoodDiary
-        exclude = ['id']
+        exclude = ['id',]
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -29,7 +29,6 @@ class ProjectSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer(read_only=True)
     coach = CustomUserSerializer(read_only=True)
     start_date = serializers.DateField()
-    deadline = serializers.DateField()
     target_calories = serializers.IntegerField(min_value=0, max_value=10_000)
     target_carbohydrate = serializers.FloatField(min_value=0, max_value=1_000)
     target_fat = serializers.FloatField(min_value=0, max_value=1_000)
@@ -40,18 +39,14 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        exclude = ['id', 'is_closed']
+        exclude = ['id',]
 
 
-class CreateUpdateProjectSerializer(serializers.ModelSerializer):
+class CreateUpdateProjectSerializer(ProjectSerializer):
     """A serializer to create/update Project instances."""
 
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects)
     coach = serializers.PrimaryKeyRelatedField(queryset=User.objects)
-
-    class Meta:
-        model = Project
-        exclude = ['id', 'is_closed']
 
     def to_representation(self, instance):
         request = self.context.get('request')

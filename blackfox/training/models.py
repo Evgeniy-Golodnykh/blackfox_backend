@@ -168,20 +168,16 @@ class Project(models.Model):
         User,
         on_delete=models.CASCADE,
         verbose_name='спортсмен',
-        related_name='project',
+        related_name='project_user',
     )
     coach = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         verbose_name='тренер',
-        related_name='coach',
+        related_name='project_coach',
     )
     start_date = models.DateField(
         verbose_name='начало проекта',
-        db_index=True,
-    )
-    deadline = models.DateField(
-        verbose_name='окончание проекта',
         db_index=True,
     )
     target_calories = models.PositiveIntegerField(
@@ -212,13 +208,9 @@ class Project(models.Model):
         verbose_name='целевой вес',
         validators=[MinValueValidator(30), MaxValueValidator(250)],
     )
-    is_closed = models.BooleanField(
-        verbose_name='проект закрыт',
-        default=False,
-    )
 
     class Meta:
         ordering = ['-start_date']
 
     def __str__(self):
-        return f'Цель {self.target_weight} кг. до {self.deadline} г.'
+        return f'{self.user.username}, целевой вес {self.target_weight} кг.'
