@@ -164,7 +164,7 @@ class FoodDiary(models.Model):
 
 
 class Project(models.Model):
-    user = models.ForeignKey(
+    user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         verbose_name='спортсмен',

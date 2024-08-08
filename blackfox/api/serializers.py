@@ -12,7 +12,7 @@ class BodyStatsDiarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BodyStatsDiary
-        exclude = ['id',]
+        exclude = ['id']
 
 
 class FoodDiarySerializer(serializers.ModelSerializer):
@@ -20,7 +20,7 @@ class FoodDiarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FoodDiary
-        exclude = ['id',]
+        exclude = ['id']
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -39,7 +39,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        exclude = ['id',]
+        exclude = ['id']
 
 
 class CreateUpdateProjectSerializer(ProjectSerializer):
@@ -47,6 +47,13 @@ class CreateUpdateProjectSerializer(ProjectSerializer):
 
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects)
     coach = serializers.PrimaryKeyRelatedField(queryset=User.objects)
+
+    def validate_user(self, value):
+        if Project.objects.filter(user=value).exists():
+            raise serializers.ValidationError(
+                'A project with this User already exists'
+            )
+        return value
 
     def to_representation(self, instance):
         request = self.context.get('request')
