@@ -11,7 +11,7 @@ from api.views import BodyStatsDiaryViewSet, FoodDiaryViewSet, ProjectViewSet
 
 router = DefaultRouter()
 router.register('bodystats', BodyStatsDiaryViewSet, basename='bodystats')
-router.register('food', FoodDiaryViewSet, basename='food')
+router.register('fooddiary', FoodDiaryViewSet, basename='fooddiary')
 router.register('project', ProjectViewSet, basename='project')
 
 urlpatterns = [

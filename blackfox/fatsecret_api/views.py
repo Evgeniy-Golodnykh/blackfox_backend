@@ -1,41 +1,17 @@
-import datetime as dt
-import os
-
 from django.core.cache import cache
 from django.shortcuts import redirect
-from rauth import OAuth1Service
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-CONSUMER_KEY = os.getenv('FATSECRET_CONSUMER_KEY')
-CONSUMER_SECRET = os.getenv('FATSECRET_CONSUMER_SECRET')
-REQUEST_TOKEN_URL = 'https://www.fatsecret.com/oauth/request_token'
-AUTHORIZE_URL = 'https://www.fatsecret.com/oauth/authorize'
-ACCESS_TOKEN_URL = 'https://www.fatsecret.com/oauth/access_token'
-BASE_URL = 'https://platform.fatsecret.com/rest/server.api'
-CALLBACK_URL = os.getenv('FATSECRET_CALLBACK_URL')
+from fatsecret_api.tools import (
+    BASE_URL, CALLBACK_URL, fatsecret, unix_date_converter,
+)
 
 error_date_message = 'Incorrect date format, should be YYYY-MM-DD or YYMMDD'
 error_request_message = 'Missing FatSecret verification code or request tokens'
 success_message = 'FatSecret account successfully linked'
-
-fatsecret = OAuth1Service(
-    consumer_key=CONSUMER_KEY,
-    consumer_secret=CONSUMER_SECRET,
-    request_token_url=REQUEST_TOKEN_URL,
-    access_token_url=ACCESS_TOKEN_URL,
-    authorize_url=AUTHORIZE_URL,
-    base_url=BASE_URL,
-)
-
-
-def unix_date_converter(date):
-    epoch = dt.date.fromtimestamp(0)
-    if type(date) is int:
-        return epoch + dt.timedelta(date)
-    return (dt.date.fromisoformat(date) - epoch).days
 
 
 class RequestTokenView(APIView):
