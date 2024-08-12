@@ -29,7 +29,7 @@ def unix_date_converter(date):
     return (dt.date.fromisoformat(date) - epoch).days
 
 
-def fatsecretdata(user):
+def get_fatsecret_data(user):
     access_token = user.fatsecret_token
     access_token_secret = user.fatsecret_secret
     if not access_token or not access_token_secret:
@@ -38,7 +38,12 @@ def fatsecretdata(user):
     session = fatsecret.get_session(
         token=(access_token, access_token_secret)
     )
-    params = {'method': 'food_entries.get_month.v2', 'format': 'json'}
-    fatsecret_data = session.get(BASE_URL, params=params).json()
+    # params = {'method': 'food_entries.get_month.v2', 'format': 'json'}
+    param = {'method': 'weights.get_month.v2', 'format': 'json', 'date': 19900}
+    param = {'method': 'food_entries.get.v2', 'format': 'json', 'date': 19900}
+    fatsecret_data = session.get(BASE_URL, params=param).json()
     session.close()
-    return fatsecret_data['month']['day']
+    food_entries = fatsecret_data.get('food_entries', None)
+    if food_entries:
+        return food_entries.get('food_entry', None)
+    return food_entries

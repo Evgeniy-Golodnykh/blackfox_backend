@@ -3,7 +3,7 @@ import datetime
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from fatsecret_api.tools import fatsecretdata
+from fatsecret.tools import get_fatsecret_data
 from training.models import BodyStatsDiary, FoodDiary, Project
 from users.serializers import CustomUserSerializer
 
@@ -15,6 +15,7 @@ diary_entry_exists_message = (
     'A diary entry for the current user and date already exists'
 )
 project_exists_message = 'A project with this User already exists'
+project_not_exists_message = 'Please create a project with this User'
 user_not_coach_message = 'A user cannot be a coach at the same time'
 
 
@@ -73,8 +74,10 @@ class CreateUpdateFoodDiarySerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
+        print(get_fatsecret_data(user))
+        if not Project.objects.filter(user=user).exists():
+            raise serializers.ValidationError(project_not_exists_message)
         validated_data['user'] = user
-        print(fatsecretdata(user))
         return FoodDiary.objects.create(**validated_data)
 
 

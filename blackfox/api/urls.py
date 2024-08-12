@@ -18,7 +18,7 @@ urlpatterns = [
     path('signup/', UserViewSet.as_view({'post': 'create'}), name='signup'),
     path('login/', TokenObtainPairView.as_view(), name='login'),
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('fatsecret/', include('fatsecret_api.urls')),
+    path('fatsecret/', include('fatsecret.urls')),
     path('', include('djoser.urls')),
     path('', include(router.urls)),
 ]
