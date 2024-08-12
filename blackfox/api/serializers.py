@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
@@ -9,7 +9,7 @@ from users.serializers import CustomUserSerializer
 
 User = get_user_model()
 
-current_date = datetime.date.today()
+current_date = dt.date.today()
 error_date_message = 'The date cannot be greater than the current one'
 diary_entry_exists_message = (
     'A diary entry for the current user and date already exists'
@@ -34,7 +34,7 @@ class CreateUpdateBodyStatsDiarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BodyStatsDiary
-        exclude = ['user']
+        exclude = ('user',)
 
     def validate_date(self, input_date):
         if input_date > current_date:
@@ -70,15 +70,20 @@ class CreateUpdateFoodDiarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FoodDiary
-        exclude = ['user']
+        exclude = ('user',)
 
     def create(self, validated_data):
         user = self.context['request'].user
-        print(get_fatsecret_data(user))
         if not Project.objects.filter(user=user).exists():
             raise serializers.ValidationError(project_not_exists_message)
-        validated_data['user'] = user
-        return FoodDiary.objects.create(**validated_data)
+        objs = get_fatsecret_data(user)
+        FoodDiary.objects.bulk_create(objs=objs)
+        return FoodDiary.objects.filter(user=user).first()
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        context = {'request': request}
+        return FoodDiarySerializer(instance, context=context).data
 
 
 class ProjectSerializer(serializers.ModelSerializer):
