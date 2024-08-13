@@ -1,7 +1,8 @@
 """URLs for connection to FatSecret API"""
 
 from django.urls import path
-from fatsecret_api.views import (
+
+from fatsecret.views import (
     AccessTokenView, FoodDiaryDailyView, FoodDiaryMonthlyView,
     RequestTokenView, WeightDiaryView,
 )

@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
 
     'api',
-    'fatsecret_api',
+    'fatsecret',
     'users',
     'training',
 ]

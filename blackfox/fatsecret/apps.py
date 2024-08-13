@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class FatsecretApiConfig(AppConfig):
+class FatsecretConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'fatsecret_api'
+    name = 'fatsecret'

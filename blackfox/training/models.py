@@ -77,13 +77,13 @@ class FoodDiary(models.Model):
         verbose_name='дата питания',
         db_index=True,
     )
-    calories_actual = models.PositiveIntegerField(
+    calories_actual = models.PositiveSmallIntegerField(
         verbose_name='калории факт',
         validators=[MinValueValidator(0), MaxValueValidator(10_000)],
         blank=True,
         null=True,
     )
-    calories_target = models.PositiveIntegerField(
+    calories_target = models.PositiveSmallIntegerField(
         verbose_name='калории план',
         validators=[MinValueValidator(0), MaxValueValidator(10_000)],
         blank=True,
@@ -95,7 +95,7 @@ class FoodDiary(models.Model):
         blank=True,
         null=True,
     )
-    carbohydrate_target = models.FloatField(
+    carbohydrate_target = models.PositiveSmallIntegerField(
         verbose_name='углеводы план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
         blank=True,
@@ -107,7 +107,7 @@ class FoodDiary(models.Model):
         blank=True,
         null=True,
     )
-    fat_target = models.FloatField(
+    fat_target = models.PositiveSmallIntegerField(
         verbose_name='жиры план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
         blank=True,
@@ -119,7 +119,7 @@ class FoodDiary(models.Model):
         blank=True,
         null=True,
     )
-    fiber_target = models.FloatField(
+    fiber_target = models.PositiveSmallIntegerField(
         verbose_name='пищевые волокна план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
         blank=True,
@@ -131,7 +131,7 @@ class FoodDiary(models.Model):
         blank=True,
         null=True,
     )
-    protein_target = models.FloatField(
+    protein_target = models.PositiveSmallIntegerField(
         verbose_name='белки план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
         blank=True,
@@ -143,7 +143,7 @@ class FoodDiary(models.Model):
         blank=True,
         null=True,
     )
-    sugar_target = models.FloatField(
+    sugar_target = models.PositiveSmallIntegerField(
         verbose_name='сахар план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
         blank=True,
@@ -164,47 +164,43 @@ class FoodDiary(models.Model):
 
 
 class Project(models.Model):
-    user = models.ForeignKey(
+    user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         verbose_name='спортсмен',
-        related_name='project',
+        related_name='project_user',
     )
     coach = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         verbose_name='тренер',
-        related_name='coach',
+        related_name='project_coach',
     )
     start_date = models.DateField(
         verbose_name='начало проекта',
         db_index=True,
     )
-    deadline = models.DateField(
-        verbose_name='окончание проекта',
-        db_index=True,
-    )
-    target_calories = models.PositiveIntegerField(
+    target_calories = models.PositiveSmallIntegerField(
         verbose_name='калории план',
         validators=[MinValueValidator(0), MaxValueValidator(10_000)],
     )
-    target_carbohydrate = models.FloatField(
+    target_carbohydrate = models.PositiveSmallIntegerField(
         verbose_name='углеводы план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
     )
-    target_fat = models.FloatField(
+    target_fat = models.PositiveSmallIntegerField(
         verbose_name='жиры план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
     )
-    target_fiber = models.FloatField(
+    target_fiber = models.PositiveSmallIntegerField(
         verbose_name='пищевые волокна план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
     )
-    target_protein = models.FloatField(
+    target_protein = models.PositiveSmallIntegerField(
         verbose_name='белки план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
     )
-    target_sugar = models.FloatField(
+    target_sugar = models.PositiveSmallIntegerField(
         verbose_name='сахар план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
     )
@@ -212,13 +208,9 @@ class Project(models.Model):
         verbose_name='целевой вес',
         validators=[MinValueValidator(30), MaxValueValidator(250)],
     )
-    is_closed = models.BooleanField(
-        verbose_name='проект закрыт',
-        default=False,
-    )
 
     class Meta:
         ordering = ['-start_date']
 
     def __str__(self):
-        return f'Цель {self.target_weight} кг. до {self.deadline} г.'
+        return f'{self.user.username}, целевой вес {self.target_weight} кг.'
