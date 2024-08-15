@@ -1,5 +1,4 @@
 from django.core.cache import cache
-from django.shortcuts import redirect
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -11,6 +10,7 @@ from fatsecret.tools import (
 
 error_date_message = 'Incorrect date format, should be YYYY-MM-DD or YYMMDD'
 error_request_message = 'Missing FatSecret verification code or request tokens'
+fatsecret_account_not_exists_message = 'Please link your Fatsecret account'
 success_message = 'FatSecret account successfully linked'
 
 
@@ -65,7 +65,10 @@ class FatsecretDataView(APIView):
         access_token = request.user.fatsecret_token
         access_token_secret = request.user.fatsecret_secret
         if not access_token or not access_token_secret:
-            return redirect('get_request_token')
+            return Response(
+                {'message': fatsecret_account_not_exists_message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         session = fatsecret.get_session(
             token=(access_token, access_token_secret)

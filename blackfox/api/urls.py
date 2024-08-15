@@ -7,10 +7,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView, TokenRefreshView,
 )
 
-from api.views import (
-    BodyStatsDiaryViewSet, FoodDiaryCreateView, FoodDiaryViewSet,
-    ProjectViewSet,
-)
+from api.views import BodyStatsDiaryViewSet, FoodDiaryViewSet, ProjectViewSet
 
 router = DefaultRouter()
 router.register('bodystats', BodyStatsDiaryViewSet, basename='bodystats')
@@ -22,7 +19,6 @@ urlpatterns = [
     path('login/', TokenObtainPairView.as_view(), name='login'),
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('fatsecret/', include('fatsecret.urls')),
-    path('fooddiary/', FoodDiaryCreateView.as_view(), name='create_fooddiary'),
     path('', include('djoser.urls')),
     path('', include(router.urls)),
 ]
