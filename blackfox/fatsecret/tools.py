@@ -74,7 +74,7 @@ def food_caclulator(foods, project, date):
     return instance
 
 
-def get_fooddiary_instance(user):
+def get_fooddiary_objects(user):
     fooddiary = FoodDiary.objects.filter(user=user).first()
     project = Project.objects.filter(user=user).first()
     if fooddiary:
@@ -89,13 +89,13 @@ def get_fooddiary_instance(user):
     )
     params = {'method': 'food_entries.get.v2', 'format': 'json'}
 
-    objects = []
+    fooddiary_objects = []
     while last_date <= current_date:
         params['date'] = unix_date_converter(last_date)
         fatsecret_data = session.get(BASE_URL, params=params).json()
         food_entries = fatsecret_data.get('food_entries')
         if food_entries:
-            objects.append(
+            fooddiary_objects.append(
                 FoodDiary(**food_caclulator(
                     food_entries.get('food_entry'), project, last_date
                 ))
@@ -103,4 +103,4 @@ def get_fooddiary_instance(user):
         last_date += dt.timedelta(1)
     session.close()
 
-    return objects
+    return fooddiary_objects

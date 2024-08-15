@@ -3,14 +3,13 @@ from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from api.permissions import IsAdmin, IsCoach
 from api.serializers import (
     BodyStatsDiarySerializer, CreateUpdateBodyStatsDiarySerializer,
     CreateUpdateProjectSerializer, FoodDiarySerializer, ProjectSerializer,
 )
-from fatsecret.tools import get_fooddiary_instance
+from fatsecret.tools import get_fooddiary_objects
 from training.models import BodyStatsDiary, FoodDiary, Project
 
 User = get_user_model()
@@ -34,7 +33,7 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
         return BodyStatsDiary.objects.all()
 
 
-class FoodDiaryViewSet(viewsets.ReadOnlyModelViewSet):
+class FoodDiaryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = FoodDiarySerializer
     filter_backends = [filters.SearchFilter]
@@ -45,10 +44,7 @@ class FoodDiaryViewSet(viewsets.ReadOnlyModelViewSet):
             return FoodDiary.objects.filter(user=self.request.user)
         return FoodDiary.objects.all()
 
-
-class FoodDiaryCreateView(APIView):
-
-    def post(self, request):
+    def create(self, request):
         username = request.query_params.get('user')
         if username:
             user = get_object_or_404(User, username=username)
@@ -64,12 +60,9 @@ class FoodDiaryCreateView(APIView):
                 {'message': project_not_exists_message},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        FoodDiary.objects.bulk_create(
-            objs=get_fooddiary_instance(user)
-        )
-        queryset = FoodDiary.objects.filter(user=user)
-        serializer = FoodDiarySerializer(queryset, many=True)
-        return Response(serializer.data)
+        objs = get_fooddiary_objects(user)
+        FoodDiary.objects.bulk_create(objs=objs)
+        return Response(FoodDiarySerializer(objs, many=True).data)
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
