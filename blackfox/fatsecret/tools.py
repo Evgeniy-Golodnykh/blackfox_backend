@@ -82,7 +82,6 @@ def get_fooddiary_objects(user):
         FoodDiary.objects.filter(id=fooddiary.id).delete()
     else:
         last_date = project.start_date
-    current_date = dt.date.today()
 
     session = fatsecret.get_session(
         token=(user.fatsecret_token, user.fatsecret_secret)
@@ -90,7 +89,7 @@ def get_fooddiary_objects(user):
     params = {'method': 'food_entries.get.v2', 'format': 'json'}
 
     fooddiary_objects = []
-    while last_date <= current_date:
+    while last_date <= dt.date.today():
         params['date'] = unix_date_converter(last_date)
         fatsecret_data = session.get(BASE_URL, params=params).json()
         food_entries = fatsecret_data.get('food_entries')
