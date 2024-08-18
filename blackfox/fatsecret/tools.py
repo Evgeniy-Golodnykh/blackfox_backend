@@ -21,16 +21,20 @@ fatsecret = OAuth1Service(
     authorize_url=AUTHORIZE_URL,
     base_url=BASE_URL,
 )
+params_food = {'method': 'food_entries.get.v2', 'format': 'json'}
+params_weight = {'method': 'weights.get_month.v2', 'format': 'json'}
 
 
 def unix_date_converter(date):
     epoch = dt.date.fromtimestamp(0)
     if type(date) is str:
         return (dt.date.fromisoformat(date) - epoch).days
+    if type(date) is int:
+        return epoch + dt.timedelta(date)
     return (date - epoch).days
 
 
-def food_caclulator(foods, project, date):
+def food_caclulator(foods, weight, project, date):
     instance = {
         'user': project.user,
         'date': date,
@@ -40,6 +44,7 @@ def food_caclulator(foods, project, date):
         'fiber_target': project.target_fiber,
         'protein_target': project.target_protein,
         'sugar_target': project.target_sugar,
+        'weight_target': project.target_weight,
     }
     for food in foods:
         instance['calories_actual'] = (
@@ -71,36 +76,63 @@ def food_caclulator(foods, project, date):
              + float(food.get('sugar', 0))),
             2
         )
+        instance['weight_actual'] = weight if weight else 0
     return instance
 
 
-def get_fooddiary_objects(user):
-    fooddiary = FoodDiary.objects.filter(user=user).first()
-    project = Project.objects.filter(user=user).first()
-    if fooddiary:
-        last_date = fooddiary.date
-        FoodDiary.objects.filter(id=fooddiary.id).delete()
-    else:
-        last_date = project.start_date
-    current_date = dt.date.today()
+def get_fatsecret_daily_food(session, date):
+    params_food['date'] = unix_date_converter(date)
+    fatsecret_data = session.get(BASE_URL, params=params_food).json()
+    return fatsecret_data.get('food_entries')
 
+
+def get_fatsecret_monthly_weights(session, date):
+    params_weight['date'] = unix_date_converter(date)
+    fatsecret_data = session.get(BASE_URL, params=params_weight).json()
+    weights = {}
+    monthly_weights = fatsecret_data['month'].get('day')
+    if not monthly_weights:
+        return weights
+    for daily_weight in monthly_weights:
+        weights[unix_date_converter(int(daily_weight['date_int']))] = float(
+            daily_weight['weight_kg']
+        )
+    return weights
+
+
+def get_fooddiary_objects(user):
     session = fatsecret.get_session(
         token=(user.fatsecret_token, user.fatsecret_secret)
     )
-    params = {'method': 'food_entries.get.v2', 'format': 'json'}
+    fooddiary = FoodDiary.objects.filter(user=user).first()
+    project = Project.objects.filter(user=user).first()
+    if fooddiary:
+        last_diary_date = fooddiary.date
+        FoodDiary.objects.filter(id=fooddiary.id).delete()
+    else:
+        last_diary_date = project.start_date
 
+    current_month = last_diary_date.month
+    monthly_weights = get_fatsecret_monthly_weights(session, last_diary_date)
     fooddiary_objects = []
-    while last_date <= current_date:
-        params['date'] = unix_date_converter(last_date)
-        fatsecret_data = session.get(BASE_URL, params=params).json()
-        food_entries = fatsecret_data.get('food_entries')
+
+    while last_diary_date <= dt.date.today():
+        food_entries = get_fatsecret_daily_food(session, last_diary_date)
+        if last_diary_date.month != current_month:
+            monthly_weights = get_fatsecret_monthly_weights(
+                session, last_diary_date
+            )
+            current_month = last_diary_date.month
         if food_entries:
             fooddiary_objects.append(
                 FoodDiary(**food_caclulator(
-                    food_entries.get('food_entry'), project, last_date
+                    foods=food_entries.get('food_entry'),
+                    weight=monthly_weights.get(last_diary_date),
+                    project=project,
+                    date=last_diary_date
                 ))
             )
-        last_date += dt.timedelta(1)
-    session.close()
+        last_diary_date += dt.timedelta(1)
 
+    session.close()
     return fooddiary_objects

@@ -46,12 +46,6 @@ class BodyStatsDiary(models.Model):
         blank=True,
         null=True,
     )
-    weight = models.FloatField(
-        verbose_name='вес',
-        validators=[MinValueValidator(30), MaxValueValidator(250)],
-        blank=True,
-        null=True,
-    )
 
     class Meta:
         ordering = ['-date']
@@ -146,6 +140,18 @@ class FoodDiary(models.Model):
     sugar_target = models.PositiveSmallIntegerField(
         verbose_name='сахар план',
         validators=[MinValueValidator(0), MaxValueValidator(1_000)],
+        blank=True,
+        null=True,
+    )
+    weight_actual = models.FloatField(
+        verbose_name='вес факт',
+        validators=[MinValueValidator(30), MaxValueValidator(250)],
+        blank=True,
+        null=True,
+    )
+    weight_target = models.FloatField(
+        verbose_name='вес план',
+        validators=[MinValueValidator(30), MaxValueValidator(250)],
         blank=True,
         null=True,
     )
