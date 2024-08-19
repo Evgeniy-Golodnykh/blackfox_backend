@@ -40,11 +40,6 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['user', 'date']
 
-    def get_queryset(self):
-        if self.request.user.role == 'user':
-            return FoodDiary.objects.filter(user=self.request.user)
-        return FoodDiary.objects.all()
-
     def create(self, request):
         username = request.query_params.get('user')
         if username:
@@ -70,6 +65,15 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
             )
         FoodDiary.objects.bulk_create(objs=objs)
         return Response(FoodDiarySerializer(objs, many=True).data)
+
+    def list(self, request):
+        username = request.query_params.get('user')
+        if username:
+            user = get_object_or_404(User, username=username)
+        else:
+            user = request.user
+        queryset = FoodDiary.objects.filter(user=user)
+        return Response(FoodDiarySerializer(queryset, many=True).data)
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
