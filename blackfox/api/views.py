@@ -14,6 +14,7 @@ from training.models import BodyStatsDiary, FoodDiary, Project
 
 User = get_user_model()
 fatsecret_account_not_exists_message = 'Please link your Fatsecret account'
+fatsecret_error_message = 'Fatsecret error: {error}'
 project_not_exists_message = 'Please create a project for current user'
 
 
@@ -60,7 +61,13 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
                 {'message': project_not_exists_message},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        objs = get_fooddiary_objects(user)
+        try:
+            objs = get_fooddiary_objects(user)
+        except KeyError as error:
+            return Response(
+                {'message': fatsecret_error_message.format(error=error)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         FoodDiary.objects.bulk_create(objs=objs)
         return Response(FoodDiarySerializer(objs, many=True).data)
 
