@@ -80,15 +80,14 @@ def food_caclulator(foods, weight, project, date):
     return instance
 
 
-def get_fatsecret_daily_food(session, date):
-    params_food['date'] = unix_date_converter(date)
-    fatsecret_data = session.get(BASE_URL, params=params_food).json()
-    return fatsecret_data.get('food_entries')
-
-
-def get_fatsecret_monthly_weights(session, date):
-    params_weight['date'] = unix_date_converter(date)
-    fatsecret_data = session.get(BASE_URL, params=params_weight).json()
+def get_fatsecret_data(session, params, date, weight=False):
+    params['date'] = unix_date_converter(date)
+    fatsecret_data = session.get(BASE_URL, params=params).json()
+    if fatsecret_data.get('error'):
+        message = fatsecret_data.get('error').get('message')
+        raise KeyError(message)
+    if not weight:
+        return fatsecret_data.get('food_entries')
     weights = {}
     monthly_weights = fatsecret_data['month'].get('day')
     if not monthly_weights:
@@ -113,14 +112,26 @@ def get_fooddiary_objects(user):
         last_diary_date = project.start_date
 
     current_month = last_diary_date.month
-    monthly_weights = get_fatsecret_monthly_weights(session, last_diary_date)
+    monthly_weights = get_fatsecret_data(
+        session=session,
+        params=params_weight,
+        date=last_diary_date,
+        weight=True
+    )
     fooddiary_objects = []
 
     while last_diary_date <= dt.date.today():
-        food_entries = get_fatsecret_daily_food(session, last_diary_date)
+        food_entries = get_fatsecret_data(
+            session=session,
+            params=params_food,
+            date=last_diary_date
+        )
         if last_diary_date.month != current_month:
-            monthly_weights = get_fatsecret_monthly_weights(
-                session, last_diary_date
+            monthly_weights = get_fatsecret_data(
+                session=session,
+                params=params_weight,
+                date=last_diary_date,
+                weight=True
             )
             current_month = last_diary_date.month
         if food_entries:
