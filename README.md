@@ -39,7 +39,7 @@ http://127.0.0.1:8000/api/swagger/
 http://127.0.0.1:8000/api/redoc/
 
 ### Technology
-[Python](https://www.python.org), [Django REST framework](https://www.django-rest-framework.org), [PostgreSQL](https://www.postgresql.org/), [Selenium](https://selenium-python.readthedocs.io/), [Docker](https://www.docker.com/), [GitHub Actions](https://github.com/features/actions)
+[Python](https://www.python.org), [Django REST framework](https://www.django-rest-framework.org), [FatSecret API](https://platform.fatsecret.com/), [PostgreSQL](https://www.postgresql.org/), [Docker](https://www.docker.com/), [GitHub Actions](https://github.com/features/actions)
 
 ### Authors
 [Evgeniy Golodnykh](https://github.com/Evgeniy-Golodnykh)  
