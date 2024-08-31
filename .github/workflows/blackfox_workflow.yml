@@ -63,7 +63,6 @@ jobs:
       with:
         host: ${{ secrets.HOST_IP }}
         username: ${{ secrets.HOST_USERNAME }}
-        password: ${{ secrets.HOST_PASSWORD }}
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         script: |
