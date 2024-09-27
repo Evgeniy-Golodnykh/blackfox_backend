@@ -4,24 +4,34 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from training.models import Project
+
 User = get_user_model()
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
     """A serializer to read/update User instances."""
 
+    coach = serializers.SerializerMethodField(read_only=True)
     fatsecret_account = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
         fields = (
+            'id',
             'username',
             'email',
             'first_name',
             'last_name',
             'role',
+            'coach',
             'fatsecret_account',
         )
+
+    def get_coach(self, obj):
+        user = get_object_or_404(User, email=obj.email)
+        project = Project.objects.filter(user=user).first()
+        return project.coach.username if project else None
 
     def get_fatsecret_account(self, obj):
         user = get_object_or_404(User, email=obj.email)
@@ -105,5 +115,4 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
         data['email'] = self.user.email
         data['username'] = self.user.username
         data['role'] = self.user.role
-        data['fatsecret_account'] = self.user.fatsecret_token is not None
         return data
