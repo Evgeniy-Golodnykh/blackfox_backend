@@ -9,6 +9,7 @@ from users.serializers import CustomUserSerializer
 User = get_user_model()
 
 current_date = dt.date.today()
+error_coach_message = 'The coach does not have the appropriate role'
 error_date_message = 'The date cannot be greater than the current one'
 diary_entry_exists_message = (
     'A diary entry for the current user and date already exists'
@@ -85,6 +86,16 @@ class CreateUpdateProjectSerializer(ProjectSerializer):
         queryset=User.objects,
         slug_field='username',
     )
+
+    def validate_start_date(self, input_date):
+        if input_date > current_date:
+            raise serializers.ValidationError(error_date_message)
+        return input_date
+
+    def validate_coach(self, user):
+        if not user.is_coach:
+            raise serializers.ValidationError(error_coach_message)
+        return user
 
     def validate_user(self, user):
         if Project.objects.filter(user=user).exists():

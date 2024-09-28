@@ -4,24 +4,34 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from training.models import Project
+
 User = get_user_model()
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
     """A serializer to read/update User instances."""
 
+    coach = serializers.SerializerMethodField(read_only=True)
     fatsecret_account = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
         fields = (
+            'id',
             'username',
             'email',
             'first_name',
             'last_name',
             'role',
+            'coach',
             'fatsecret_account',
         )
+
+    def get_coach(self, obj):
+        user = get_object_or_404(User, email=obj.email)
+        project = Project.objects.filter(user=user).first()
+        return project.coach.username if project else None
 
     def get_fatsecret_account(self, obj):
         user = get_object_or_404(User, email=obj.email)
@@ -38,7 +48,6 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         validators=[validate_password]
     )
     confirm_password = serializers.CharField(write_only=True, required=True)
-    role = serializers.CharField(write_only=True, required=True)
     first_name = serializers.CharField(
         write_only=True,
         required=True,
@@ -57,7 +66,6 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
             'username',
             'password',
             'confirm_password',
-            'role',
             'first_name',
             'last_name',
         )
@@ -65,11 +73,6 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
     def validate_username(self, value):
         if value.lower() == 'me':
             raise serializers.ValidationError('Please choose another username')
-        return value
-
-    def validate_role(self, value):
-        if value.lower() not in ('user', 'coach'):
-            raise serializers.ValidationError('Please choose another role')
         return value
 
     def validate(self, attrs):
@@ -83,7 +86,6 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         user = User.objects.create(
             username=validated_data['username'],
             email=validated_data['email'],
-            role=validated_data['role'].lower(),
             first_name=validated_data['first_name'].capitalize(),
             last_name=validated_data['last_name'].capitalize(),
         )
@@ -105,5 +107,4 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
         data['email'] = self.user.email
         data['username'] = self.user.username
         data['role'] = self.user.role
-        data['fatsecret_account'] = self.user.fatsecret_token is not None
         return data
