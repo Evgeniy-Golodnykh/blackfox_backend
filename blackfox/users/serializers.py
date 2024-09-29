@@ -9,6 +9,17 @@ from training.models import Project
 User = get_user_model()
 
 
+class CustomLoginSerializer(TokenObtainPairSerializer):
+    """A serializer to login User"""
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['email'] = self.user.email
+        data['username'] = self.user.username
+        data['role'] = self.user.role
+        return data
+
+
 class CustomUserSerializer(serializers.ModelSerializer):
     """A serializer to read/update User instances."""
 
@@ -99,12 +110,8 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         return CustomUserSerializer(instance, context=context).data
 
 
-class CustomLoginSerializer(TokenObtainPairSerializer):
-    """A serializer to login User"""
+class CustomUserDeleteSerializer(serializers.Serializer):
+    """A serializer to delete User instances."""
 
-    def validate(self, attrs):
-        data = super().validate(attrs)
-        data['email'] = self.user.email
-        data['username'] = self.user.username
-        data['role'] = self.user.role
-        return data
+    class Meta:
+        model = User

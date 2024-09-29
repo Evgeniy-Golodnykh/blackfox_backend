@@ -11,11 +11,11 @@ User = get_user_model()
 current_date = dt.date.today()
 error_coach_message = 'The coach does not have the appropriate role'
 error_date_message = 'The date cannot be greater than the current one'
+error_user_message = 'The user is admin or coach, please choose another one'
 diary_entry_exists_message = (
     'A diary entry for the current user and date already exists'
 )
 project_exists_message = 'A project with this User already exists'
-user_not_coach_message = 'A user cannot be a coach at the same time'
 
 
 class BodyStatsDiarySerializer(serializers.ModelSerializer):
@@ -98,16 +98,11 @@ class CreateUpdateProjectSerializer(ProjectSerializer):
         return user
 
     def validate_user(self, user):
+        if user.is_admin or user.is_coach:
+            raise serializers.ValidationError(error_user_message)
         if Project.objects.filter(user=user).exists():
             raise serializers.ValidationError(project_exists_message)
         return user
-
-    def validate(self, data):
-        user = data.get('user')
-        coach = data.get('coach')
-        if user == coach:
-            raise serializers.ValidationError(user_not_coach_message)
-        return data
 
     def to_representation(self, instance):
         request = self.context.get('request')
