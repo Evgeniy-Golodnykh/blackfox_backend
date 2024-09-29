@@ -4,7 +4,7 @@ from rest_framework import filters, status, viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
-from api.permissions import IsAdmin, IsCoach
+from api.permissions import IsAdmin, IsAdminOrCoach
 from api.serializers import (
     BodyStatsDiarySerializer, CreateUpdateBodyStatsDiarySerializer,
     CreateUpdateProjectSerializer, FoodDiarySerializer, ProjectSerializer,
@@ -19,6 +19,7 @@ project_not_exists_message = 'Please create a project for current user'
 
 
 class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
+    queryset = BodyStatsDiary.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['user', 'date']
@@ -28,13 +29,18 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
             return CreateUpdateBodyStatsDiarySerializer
         return BodyStatsDiarySerializer
 
-    def get_queryset(self):
-        if self.request.user.role == 'user':
-            return BodyStatsDiary.objects.filter(user=self.request.user)
-        return BodyStatsDiary.objects.all()
+    def list(self, request):
+        username = request.query_params.get('user')
+        if username:
+            user = get_object_or_404(User, username=username)
+        else:
+            user = request.user
+        queryset = BodyStatsDiary.objects.filter(user=user)
+        return Response(BodyStatsDiarySerializer(queryset, many=True).data)
 
 
 class FoodDiaryViewSet(viewsets.ModelViewSet):
+    queryset = FoodDiary.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = FoodDiarySerializer
     filter_backends = [filters.SearchFilter]
@@ -77,12 +83,20 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdmin | IsCoach]
-    queryset = Project.objects.all()
     filter_backends = [filters.SearchFilter]
     search_fields = ['user', 'coach', 'start_date']
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [IsAdmin()]
+        return [IsAdminOrCoach()]
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
             return CreateUpdateProjectSerializer
         return ProjectSerializer
+
+    def get_queryset(self):
+        if self.request.user.is_coach:
+            return Project.objects.filter(coach=self.request.user)
+        return Project.objects.all()
