@@ -168,10 +168,12 @@ DJOSER = {
     'SERIALIZERS': {
         'user': 'users.serializers.CustomUserSerializer',
         'user_create': 'users.serializers.CustomUserCreateSerializer',
+        'user_delete': 'users.serializers.CustomUserDeleteSerializer',
         'current_user': 'users.serializers.CustomUserSerializer',
     },
     'PERMISSIONS': {
         'user': ['djoser.permissions.CurrentUserOrAdminOrReadOnly'],
+        'user_delete': ['api.permissions.IsAdmin'],
         'user_list': ['djoser.permissions.CurrentUserOrAdminOrReadOnly'],
     }
 }
