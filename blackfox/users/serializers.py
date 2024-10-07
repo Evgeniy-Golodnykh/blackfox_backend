@@ -14,9 +14,15 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
-        data['email'] = self.user.email
+        project = Project.objects.filter(user=self.user).first()
+        data['id'] = self.user.id
         data['username'] = self.user.username
+        data['email'] = self.user.email
+        data['first_name'] = self.user.first_name
+        data['last_name'] = self.user.last_name
         data['role'] = self.user.role
+        data['coach'] = project.coach.username if project else None
+        data['fatsecret_account'] = self.user.fatsecret_token is not None
         return data
 
 

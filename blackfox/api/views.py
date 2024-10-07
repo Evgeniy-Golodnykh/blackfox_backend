@@ -22,21 +22,12 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
     queryset = BodyStatsDiary.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter]
-    search_fields = ['user', 'date']
+    search_fields = ('=user__username',)
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
             return CreateUpdateBodyStatsDiarySerializer
         return BodyStatsDiarySerializer
-
-    def list(self, request):
-        username = request.query_params.get('user')
-        if username:
-            user = get_object_or_404(User, username=username)
-        else:
-            user = request.user
-        queryset = BodyStatsDiary.objects.filter(user=user)
-        return Response(BodyStatsDiarySerializer(queryset, many=True).data)
 
 
 class FoodDiaryViewSet(viewsets.ModelViewSet):
@@ -44,7 +35,7 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = FoodDiarySerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ['user', 'date']
+    search_fields = ('=user__username',)
 
     def create(self, request):
         username = request.query_params.get('user')
@@ -72,19 +63,10 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
         FoodDiary.objects.bulk_create(objs=objs)
         return Response(FoodDiarySerializer(objs, many=True).data)
 
-    def list(self, request):
-        username = request.query_params.get('user')
-        if username:
-            user = get_object_or_404(User, username=username)
-        else:
-            user = request.user
-        queryset = FoodDiary.objects.filter(user=user)
-        return Response(FoodDiarySerializer(queryset, many=True).data)
-
 
 class ProjectViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
-    search_fields = ['user', 'coach', 'start_date']
+    search_fields = ('=user__username',)
 
     def get_permissions(self):
         if self.action == 'create':
