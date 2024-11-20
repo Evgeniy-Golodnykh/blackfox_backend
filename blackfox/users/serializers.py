@@ -8,6 +8,10 @@ from training.models import Project
 
 User = get_user_model()
 
+error_file_size_message = 'The file is too large. Maximum size is 5 Mb'
+error_username_message = 'Please choose another username'
+error_match_password_message = 'Password confirmation does not match'
+
 
 class CustomLoginSerializer(TokenObtainPairSerializer):
     """A serializer to login User"""
@@ -38,12 +42,18 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'id',
             'username',
             'email',
+            'image',
             'first_name',
             'last_name',
             'role',
             'coach',
             'fatsecret_account',
         )
+
+    def validate_image(self, value):
+        if value.size > 5 * 1024 * 1024:
+            raise serializers.ValidationError(error_file_size_message)
+        return value
 
     def get_coach(self, obj):
         user = get_object_or_404(User, email=obj.email)
@@ -89,14 +99,12 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
 
     def validate_username(self, value):
         if value.lower() == 'me':
-            raise serializers.ValidationError('Please choose another username')
+            raise serializers.ValidationError(error_username_message)
         return value
 
     def validate(self, attrs):
         if attrs['password'] != attrs['confirm_password']:
-            raise serializers.ValidationError(
-                'Password confirmation does not match'
-            )
+            raise serializers.ValidationError(error_match_password_message)
         return attrs
 
     def create(self, validated_data):

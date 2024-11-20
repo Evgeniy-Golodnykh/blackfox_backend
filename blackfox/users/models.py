@@ -16,6 +16,12 @@ class User(AbstractUser):
         unique=True,
         verbose_name='email',
     )
+    image = models.ImageField(
+        upload_to='user_images/',
+        verbose_name='image',
+        blank=True,
+        null=True,
+    )
     role = models.CharField(
         max_length=9,
         choices=Roles.choices,
