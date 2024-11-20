@@ -5,10 +5,12 @@ djoser==2.2.0
 social-auth-app-django==5.2.0 
 django-filter==22.1
 django-cors-headers==3.12.0
+django-cleanup==9.0.0
 requests==2.26.0
 gunicorn==20.0.4
 drf_spectacular==0.26.2
 rauth==0.7.3
+Pillow==9.3.0
 
 flake8==3.9.2
 flake8-broken-line

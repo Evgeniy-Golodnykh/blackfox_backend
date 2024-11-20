@@ -13,7 +13,7 @@ class BodyStatsDiary(models.Model):
         related_name='bodystats_diary',
     )
     date = models.DateField(
-        verbose_name='дата питания',
+        verbose_name='дата параметров',
         db_index=True,
     )
     abdominal = models.FloatField(
@@ -183,8 +183,12 @@ class Project(models.Model):
         related_name='project_coach',
     )
     start_date = models.DateField(
-        verbose_name='начало проекта',
+        verbose_name='дата начала проекта',
         db_index=True,
+    )
+    start_weight = models.FloatField(
+        verbose_name='начальный вес',
+        validators=[MinValueValidator(30), MaxValueValidator(250)],
     )
     target_calories = models.PositiveSmallIntegerField(
         verbose_name='калории план',
