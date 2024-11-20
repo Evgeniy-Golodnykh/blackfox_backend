@@ -17,8 +17,8 @@ class User(AbstractUser):
         verbose_name='email',
     )
     image = models.ImageField(
-        upload_to='media/',
-        verbose_name='user_images/',
+        upload_to='user_images/',
+        verbose_name='image',
         blank=True,
         null=True,
     )

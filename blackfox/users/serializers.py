@@ -9,7 +9,6 @@ from training.models import Project
 User = get_user_model()
 
 error_file_size_message = 'The file is too large. Maximum size is 5 Mb'
-error_file_type_message = 'Only images can be uploaded'
 error_username_message = 'Please choose another username'
 error_match_password_message = 'Password confirmation does not match'
 
@@ -54,8 +53,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
     def validate_image(self, value):
         if value.size > 5 * 1024 * 1024:
             raise serializers.ValidationError(error_file_size_message)
-        if not value.content_type.startswith('image/'):
-            raise serializers.ValidationError(error_file_type_message)
         return value
 
     def get_coach(self, obj):
