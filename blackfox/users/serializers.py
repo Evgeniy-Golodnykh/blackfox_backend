@@ -10,6 +10,7 @@ User = get_user_model()
 
 error_file_size_message = 'The file is too large. Maximum size is 5 Mb'
 error_username_message = 'Please choose another username'
+error_role_message = 'Please choose correct role'
 error_match_password_message = 'Password confirmation does not match'
 
 
@@ -85,6 +86,11 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         required=True,
         max_length=100
     )
+    role = serializers.CharField(
+        write_only=True,
+        required=True,
+        max_length=5
+    )
 
     class Meta:
         model = User
@@ -95,11 +101,17 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
             'confirm_password',
             'first_name',
             'last_name',
+            'role',
         )
 
     def validate_username(self, value):
         if value.lower() == 'me':
             raise serializers.ValidationError(error_username_message)
+        return value
+
+    def validate_role(self, value):
+        if value.lower() not in ('user', 'coach'):
+            raise serializers.ValidationError(error_role_message)
         return value
 
     def validate(self, attrs):
@@ -109,8 +121,9 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = User.objects.create(
-            username=validated_data['username'],
-            email=validated_data['email'],
+            username=validated_data['username'].lower(),
+            email=validated_data['email'].lower(),
+            role=validated_data['role'].lower(),
             first_name=validated_data['first_name'].capitalize(),
             last_name=validated_data['last_name'].capitalize(),
         )
