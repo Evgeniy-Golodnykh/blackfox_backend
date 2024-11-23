@@ -1,10 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from api.permissions import IsAdmin, IsAdminOrCoach
+from api.permissions import IsAdmin
 from api.serializers import (
     BodyStatsDiarySerializer, CreateUpdateBodyStatsDiarySerializer,
     CreateUpdateProjectSerializer, FoodDiarySerializer, ProjectSerializer,
@@ -20,7 +20,7 @@ project_not_exists_message = 'Please create a project for current user'
 
 class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
     queryset = BodyStatsDiary.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ('=user__username',)
 
@@ -32,7 +32,7 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
 
 class FoodDiaryViewSet(viewsets.ModelViewSet):
     queryset = FoodDiary.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
     serializer_class = FoodDiarySerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ('=user__username',)
@@ -71,7 +71,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'create':
             return [IsAdmin()]
-        return [IsAdminOrCoach()]
+        return [IsAuthenticated()]
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):

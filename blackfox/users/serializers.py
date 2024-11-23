@@ -18,6 +18,7 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
     """A serializer to login User"""
 
     def validate(self, attrs):
+        attrs['email'] = attrs.get('email').lower()  # to ignore login case
         data = super().validate(attrs)
         project = Project.objects.filter(user=self.user).first()
         data['id'] = self.user.id
