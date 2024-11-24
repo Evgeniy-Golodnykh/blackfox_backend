@@ -8,10 +8,11 @@ from training.models import Project
 
 User = get_user_model()
 
-error_file_size_message = 'The file is too large. Maximum size is 5 Mb'
-error_username_message = 'Please choose another username'
+error_email_message = 'A user with this e-mail already exists'
+error_username_message = 'A user with that username already exists'
 error_role_message = 'Please choose correct role'
 error_match_password_message = 'Password confirmation does not match'
+error_file_size_message = 'The file is too large. Maximum size is 5 Mb'
 
 
 class CustomLoginSerializer(TokenObtainPairSerializer):
@@ -105,8 +106,13 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
             'role',
         )
 
+    def validate_email(self, value):
+        if User.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError(error_email_message)
+        return value
+
     def validate_username(self, value):
-        if value.lower() == 'me':
+        if User.objects.filter(username=value.lower()).exists():
             raise serializers.ValidationError(error_username_message)
         return value
 

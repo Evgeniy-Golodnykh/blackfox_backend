@@ -1,9 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, status, viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from api.filters import UniversalUserFilter
 from api.permissions import IsAdmin
 from api.serializers import (
     BodyStatsDiarySerializer, CreateUpdateBodyStatsDiarySerializer,
@@ -19,28 +21,37 @@ project_not_exists_message = 'Please create a project for current user'
 
 
 class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
-    queryset = BodyStatsDiary.objects.all()
     permission_classes = [IsAuthenticated]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ('=user__username',)
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = UniversalUserFilter
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
             return CreateUpdateBodyStatsDiarySerializer
         return BodyStatsDiarySerializer
 
+    def get_queryset(self):
+        if self.request.user.is_admin or self.request.user.is_coach:
+            return BodyStatsDiary.objects.all()
+        return BodyStatsDiary.objects.filter(user=self.request.user)
+
 
 class FoodDiaryViewSet(viewsets.ModelViewSet):
-    queryset = FoodDiary.objects.all()
     permission_classes = [IsAuthenticated]
     serializer_class = FoodDiarySerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ('=user__username',)
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = UniversalUserFilter
+
+    def get_queryset(self):
+        if self.request.user.is_admin or self.request.user.is_coach:
+            return FoodDiary.objects.all()
+        return FoodDiary.objects.filter(user=self.request.user)
 
     def create(self, request):
-        username = request.query_params.get('user')
-        if username:
-            user = get_object_or_404(User, username=username)
+        if request.user.is_admin or request.user.is_coach:
+            user = get_object_or_404(
+                User, username=request.query_params.get('user')
+            )
         else:
             user = request.user
         if not user.fatsecret_token or not user.fatsecret_secret:
@@ -65,8 +76,8 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    filter_backends = [filters.SearchFilter]
-    search_fields = ('=user__username',)
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = UniversalUserFilter
 
     def get_permissions(self):
         if self.action == 'create':
@@ -79,6 +90,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return ProjectSerializer
 
     def get_queryset(self):
+        if self.request.user.is_admin:
+            return Project.objects.all()
         if self.request.user.is_coach:
             return Project.objects.filter(coach=self.request.user)
-        return Project.objects.all()
+        return Project.objects.filter(user=self.request.user)
