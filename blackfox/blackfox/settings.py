@@ -173,7 +173,7 @@ DJOSER = {
         'user': 'users.serializers.CustomUserSerializer',
         'user_create': 'users.serializers.CustomUserCreateSerializer',
         'user_delete': 'users.serializers.CustomUserDeleteSerializer',
-        'current_user': 'users.serializers.CustomUserSerializer',
+        'current_user': 'users.serializers.CustomUserUpdateSerializer',
     },
     'PERMISSIONS': {
         'user': ['djoser.permissions.CurrentUserOrAdminOrReadOnly'],
