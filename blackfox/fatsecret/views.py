@@ -1,4 +1,6 @@
+from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -8,7 +10,8 @@ from fatsecret.tools import (
     BASE_URL, CALLBACK_URL, fatsecret, unix_date_converter,
 )
 
-error_date_message = 'Incorrect date format, should be YYYY-MM-DD or YYMMDD'
+User = get_user_model()
+error_date_message = 'Incorrect date format, should be YYYY-MM-DD or YYYYMMDD'
 error_request_message = 'Missing FatSecret verification code or request tokens'
 fatsecret_account_not_exists_message = 'Please link your Fatsecret account'
 success_message = 'FatSecret account successfully linked'
@@ -62,8 +65,14 @@ class FatsecretDataView(APIView):
     params = None
 
     def get(self, request):
-        access_token = request.user.fatsecret_token
-        access_token_secret = request.user.fatsecret_secret
+        if request.user.is_admin or request.user.is_coach:
+            user = get_object_or_404(
+                User, username=request.query_params.get('user')
+            )
+        else:
+            user = request.user
+        access_token = user.fatsecret_token
+        access_token_secret = user.fatsecret_secret
         if not access_token or not access_token_secret:
             return Response(
                 {'message': fatsecret_account_not_exists_message},

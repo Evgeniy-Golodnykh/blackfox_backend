@@ -44,6 +44,7 @@ def food_caclulator(foods, weight, project, date):
         'fiber_target': project.target_fiber,
         'protein_target': project.target_protein,
         'sugar_target': project.target_sugar,
+        'weight_actual': weight if weight else 0,
         'weight_target': project.target_weight,
     }
     for food in foods:
@@ -76,7 +77,6 @@ def food_caclulator(foods, weight, project, date):
              + float(food.get('sugar', 0))),
             2
         )
-        instance['weight_actual'] = weight if weight else 0
     return instance
 
 

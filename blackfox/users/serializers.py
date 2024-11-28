@@ -10,9 +10,11 @@ User = get_user_model()
 
 error_email_message = 'A user with this e-mail already exists'
 error_username_message = 'A user with that username already exists'
+error_first_name_message = 'Please enter your firstname'
+error_last_name_message = 'Please enter your lastname'
 error_role_message = 'Please choose correct role'
 error_match_password_message = 'Password confirmation does not match'
-error_file_size_message = 'The file is too large. Maximum size is 5 Mb'
+error_image_message = 'Please choose an image with a size less than 5 mb'
 
 
 class CustomLoginSerializer(TokenObtainPairSerializer):
@@ -34,7 +36,7 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
-    """A serializer to read/update User instances."""
+    """A serializer to read User instances."""
 
     coach = serializers.SerializerMethodField(read_only=True)
     fatsecret_account = serializers.SerializerMethodField(read_only=True)
@@ -43,20 +45,15 @@ class CustomUserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             'id',
-            'username',
             'email',
-            'image',
+            'username',
             'first_name',
             'last_name',
+            'image',
             'role',
             'coach',
             'fatsecret_account',
         )
-
-    def validate_image(self, value):
-        if value.size > 5 * 1024 * 1024:
-            raise serializers.ValidationError(error_file_size_message)
-        return value
 
     def get_coach(self, obj):
         user = get_object_or_404(User, email=obj.email)
@@ -137,6 +134,50 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        context = {'request': request}
+        return CustomUserSerializer(instance, context=context).data
+
+
+class CustomUserUpdateSerializer(serializers.ModelSerializer):
+    """A serializer to update User instances."""
+
+    class Meta:
+        model = User
+        fields = (
+            'email',
+            'username',
+            'image',
+            'first_name',
+            'last_name',
+        )
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError(error_email_message)
+        return value.lower()
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value.lower()).exists():
+            raise serializers.ValidationError(error_username_message)
+        return value.lower()
+
+    def validate_first_name(self, value):
+        if not value or len(value) > 100:
+            raise serializers.ValidationError(error_first_name_message)
+        return value.capitalize()
+
+    def validate_last_name(self, value):
+        if not value or len(value) > 100:
+            raise serializers.ValidationError(error_last_name_message)
+        return value.capitalize()
+
+    def validate_image(self, value):
+        if not value or value.size > 5 * 1024 * 1024:
+            raise serializers.ValidationError(error_image_message)
+        return value
 
     def to_representation(self, instance):
         request = self.context.get('request')

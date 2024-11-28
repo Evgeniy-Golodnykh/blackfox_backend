@@ -13,9 +13,12 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -45,6 +48,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'drf_spectacular',
+    'django_crontab',
     'django_cleanup.apps.CleanupConfig',
 
     'api',
@@ -173,7 +177,7 @@ DJOSER = {
         'user': 'users.serializers.CustomUserSerializer',
         'user_create': 'users.serializers.CustomUserCreateSerializer',
         'user_delete': 'users.serializers.CustomUserDeleteSerializer',
-        'current_user': 'users.serializers.CustomUserSerializer',
+        'current_user': 'users.serializers.CustomUserUpdateSerializer',
     },
     'PERMISSIONS': {
         'user': ['djoser.permissions.CurrentUserOrAdminOrReadOnly'],
@@ -188,6 +192,10 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.CustomLoginSerializer',
 }
+
+CRONJOBS = [
+    ('0 3 * * *', 'api.cron.fooddiary_autoupdate', f'>> {MEDIA_ROOT}/crontab_log.log 2>&1'),
+]
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'BlackFox API',
