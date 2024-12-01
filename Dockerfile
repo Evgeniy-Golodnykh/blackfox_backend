@@ -1,9 +1,8 @@
 FROM python:3.11-slim
 
 # Install the Cron
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    cron \
-  && rm -rf \
+RUN apt-get update && apt-get install -y cron \
+    && rm -rf \
     /tmp/* \
     /usr/share/doc/* \
     /var/cache/* \
@@ -21,4 +20,10 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 
 COPY blackfox/ .
 
-CMD ["gunicorn", "blackfox.wsgi:application", "--bind", "0:8000"]
+# Add Entrypoint with additional commands
+ENTRYPOINT /bin/sh -c "touch /var/log/cron.log && \
+                       printenv | grep -Ev 'BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID|LANG|PWD|GPG_KEY|_=' >> /etc/environment && \
+                       python manage.py crontab remove && \
+                       python manage.py crontab add && \
+                       service cron start && \
+                       gunicorn blackfox.wsgi:application --bind 0:8000"
