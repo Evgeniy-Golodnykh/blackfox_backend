@@ -8,6 +8,7 @@ services:
     environment:
       - TZ=Europe/Moscow
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - static_value:/app/static/
       - media_value:/app/media/
     env_file:

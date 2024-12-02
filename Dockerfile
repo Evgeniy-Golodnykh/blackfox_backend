@@ -1,8 +1,9 @@
 FROM python:3.11-slim
 
 # Install the Cron
-RUN apt-get update && apt-get install -y cron \
-    && rm -rf \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends cron && \
+    rm -rf \
     /tmp/* \
     /usr/share/doc/* \
     /var/cache/* \
