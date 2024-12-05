@@ -5,11 +5,12 @@ from rauth import OAuth1Service
 
 from training.models import FoodDiary, Project
 
+BLACKFOX_URL = 'https://fayustovna.github.io/blackfox-nutrition-app/'
 CONSUMER_KEY = os.getenv('FATSECRET_CONSUMER_KEY')
 CONSUMER_SECRET = os.getenv('FATSECRET_CONSUMER_SECRET')
-REQUEST_TOKEN_URL = 'https://www.fatsecret.com/oauth/request_token'
-AUTHORIZE_URL = 'https://www.fatsecret.com/oauth/authorize'
-ACCESS_TOKEN_URL = 'https://www.fatsecret.com/oauth/access_token'
+REQUEST_TOKEN_URL = 'https://authentication.fatsecret.com/oauth/request_token'
+AUTHORIZE_URL = 'https://authentication.fatsecret.com/oauth/authorize'
+ACCESS_TOKEN_URL = 'https://authentication.fatsecret.com/oauth/access_token'
 BASE_URL = 'https://platform.fatsecret.com/rest/server.api'
 CALLBACK_URL = os.getenv('FATSECRET_CALLBACK_URL')
 

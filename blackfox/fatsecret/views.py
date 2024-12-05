@@ -1,13 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from fatsecret.tools import (
-    BASE_URL, CALLBACK_URL, fatsecret, unix_date_converter,
+    BLACKFOX_URL, CALLBACK_URL, fatsecret, unix_date_converter,
 )
 
 User = get_user_model()
@@ -55,10 +55,7 @@ class AccessTokenView(APIView):
         user.save()
         session.close()
 
-        return Response(
-            {'message': success_message},
-            status=status.HTTP_200_OK
-        )
+        return redirect(BLACKFOX_URL)
 
 
 class FatsecretDataView(APIView):
@@ -93,10 +90,10 @@ class FatsecretDataView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        fatsecret_data = session.get(BASE_URL, params=self.params).json()
+        fatsecret_data = session.get(fatsecret.base_url, params=self.params)
         session.close()
 
-        return Response(fatsecret_data, status=status.HTTP_200_OK)
+        return Response(fatsecret_data.json(), status=status.HTTP_200_OK)
 
 
 class FoodDiaryMonthlyView(FatsecretDataView):
