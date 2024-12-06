@@ -92,9 +92,7 @@ def get_fatsecret_data(session, params, date):
     if params['method'] is PARAMS_FOOD_DAILY['method']:
         return fatsecret_data.get('food_entries')
     monthly_weights = fatsecret_data['month'].get('day')
-    if not monthly_weights:
-        return {}
-    return {
+    return dict() if not monthly_weights else {
         unix_date_converter(int(daily_weight['date_int'])):
         float(daily_weight['weight_kg'])
         for daily_weight in monthly_weights
