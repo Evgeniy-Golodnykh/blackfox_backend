@@ -37,4 +37,4 @@ def fooddiary_autoupdate():
             continue
         FoodDiary.objects.bulk_create(objs=objs)
         logging.info(successful_message.format(user=user.username))
-        time.sleep(5)
+        time.sleep(1)

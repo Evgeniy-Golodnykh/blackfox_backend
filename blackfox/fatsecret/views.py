@@ -7,14 +7,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from fatsecret.tools import (
-    BLACKFOX_URL, CALLBACK_URL, fatsecret, unix_date_converter,
+    BLACKFOX_URL, CALLBACK_URL, PARAMS_FOOD_DAILY, PARAMS_FOOD_MONTHLY,
+    PARAMS_WEIGHT, fatsecret, unix_date_converter,
 )
 
-User = get_user_model()
 error_date_message = 'Incorrect date format, should be YYYY-MM-DD or YYYYMMDD'
 error_request_message = 'Missing FatSecret verification code or request tokens'
 fatsecret_account_not_exists_message = 'Please link your Fatsecret account'
-success_message = 'FatSecret account successfully linked'
+
+User = get_user_model()
 
 
 class RequestTokenView(APIView):
@@ -24,8 +25,7 @@ class RequestTokenView(APIView):
             method='GET', params={'oauth_callback': CALLBACK_URL}
         )
         authorize_url = fatsecret.get_authorize_url(request_token)
-        cache.set(request_token, (request_token_secret, request.user), 900)
-
+        cache.set(request_token, (request_token_secret, request.user), 300)
         return Response(
             {'authorize_url': authorize_url},
             status=status.HTTP_200_OK
@@ -45,7 +45,6 @@ class AccessTokenView(APIView):
                 {'message': error_request_message},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
         session = fatsecret.get_auth_session(
             request_token, request_token_secret,
             method='POST', data={'oauth_verifier': verifier}
@@ -54,7 +53,6 @@ class AccessTokenView(APIView):
         user.fatsecret_secret = session.access_token_secret
         user.save()
         session.close()
-
         return redirect(BLACKFOX_URL)
 
 
@@ -75,11 +73,9 @@ class FatsecretDataView(APIView):
                 {'message': fatsecret_account_not_exists_message},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
         session = fatsecret.get_session(
             token=(access_token, access_token_secret)
         )
-
         date = request.query_params.get('date')
         if date:
             try:
@@ -89,20 +85,18 @@ class FatsecretDataView(APIView):
                     {'message': error_date_message},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-
         fatsecret_data = session.get(fatsecret.base_url, params=self.params)
         session.close()
-
         return Response(fatsecret_data.json(), status=status.HTTP_200_OK)
 
 
-class FoodDiaryMonthlyView(FatsecretDataView):
-    params = {'method': 'food_entries.get_month.v2', 'format': 'json'}
-
-
 class FoodDiaryDailyView(FatsecretDataView):
-    params = {'method': 'food_entries.get.v2', 'format': 'json'}
+    params = PARAMS_FOOD_DAILY
+
+
+class FoodDiaryMonthlyView(FatsecretDataView):
+    params = PARAMS_FOOD_MONTHLY
 
 
 class WeightDiaryView(FatsecretDataView):
-    params = {'method': 'weights.get_month.v2', 'format': 'json'}
+    params = PARAMS_WEIGHT

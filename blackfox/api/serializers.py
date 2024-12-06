@@ -11,7 +11,7 @@ User = get_user_model()
 current_date = dt.date.today()
 error_coach_message = 'The coach does not have the appropriate role'
 error_big_date_message = 'The date cannot be greater than the current one'
-error_small_date_message = 'The date cannot be less than 15 days ago'
+error_small_date_message = 'The date cannot be earlier than the last 3 months'
 error_user_message = 'The user is admin or coach, please choose another one'
 diary_entry_exists_message = (
     'A diary entry for the current user and date already exists'
@@ -91,7 +91,7 @@ class CreateUpdateProjectSerializer(ProjectSerializer):
     def validate_start_date(self, input_date):
         if input_date > current_date:
             raise serializers.ValidationError(error_big_date_message)
-        if input_date < current_date - dt.timedelta(15):
+        if input_date < current_date - dt.timedelta(91):
             raise serializers.ValidationError(error_small_date_message)
         return input_date
 

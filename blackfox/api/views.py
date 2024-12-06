@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from api.filters import UniversalUserFilter
-from api.permissions import IsAdmin
+from api.permissions import IsAdmin, IsAdminOrCoach
 from api.serializers import (
     BodyStatsDiarySerializer, CreateUpdateBodyStatsDiarySerializer,
     CreateUpdateProjectSerializer, FoodDiarySerializer, ProjectSerializer,
@@ -82,10 +82,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'create':
             return [IsAdmin()]
+        if self.action in ('partial_update', 'update'):
+            return [IsAdminOrCoach()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
-        if self.action in ('create', 'partial_update'):
+        if self.action in ('create', 'partial_update', 'update'):
             return CreateUpdateProjectSerializer
         return ProjectSerializer
 
