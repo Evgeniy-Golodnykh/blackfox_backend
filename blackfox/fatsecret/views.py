@@ -11,14 +11,15 @@ from fatsecret.tools import (
     PARAMS_WEIGHT, fatsecret, unix_date_converter,
 )
 
+User = get_user_model()
+
 error_date_message = 'Incorrect date format, should be YYYY-MM-DD or YYYYMMDD'
 error_request_message = 'Missing FatSecret verification code or request tokens'
 fatsecret_account_not_exists_message = 'Please link your Fatsecret account'
 
-User = get_user_model()
-
 
 class RequestTokenView(APIView):
+    """A view to request FatSecret token."""
 
     def get(self, request):
         request_token, request_token_secret = fatsecret.get_request_token(
@@ -33,6 +34,8 @@ class RequestTokenView(APIView):
 
 
 class AccessTokenView(APIView):
+    """A view to access FatSecret token."""
+
     permission_classes = (AllowAny,)
 
     def get(self, request):
@@ -57,6 +60,8 @@ class AccessTokenView(APIView):
 
 
 class FatsecretDataView(APIView):
+    """A view for obtaining FatSecret user data."""
+
     params = None
 
     def get(self, request):

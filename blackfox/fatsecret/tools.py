@@ -29,6 +29,8 @@ fatsecret = OAuth1Service(
 
 
 def unix_date_converter(date):
+    """A function to convert date to/from FatSceret format."""
+
     epoch = dt.date.fromtimestamp(0)
     if type(date) is str:
         return (dt.date.fromisoformat(date) - epoch).days
@@ -38,6 +40,8 @@ def unix_date_converter(date):
 
 
 def food_caclulator(foods, weight, project, date):
+    """A function for calculating and compiling a daily food diary."""
+
     instance = {
         'user': project.user,
         'date': date,
@@ -84,6 +88,8 @@ def food_caclulator(foods, weight, project, date):
 
 
 def get_fatsecret_data(session, params, date):
+    """A function for obtaining FatSecret user data."""
+
     params['date'] = unix_date_converter(date)
     fatsecret_data = session.get(BASE_URL, params=params).json()
     if fatsecret_data.get('error'):
@@ -100,6 +106,8 @@ def get_fatsecret_data(session, params, date):
 
 
 def get_fooddiary_objects(user):
+    """A function to create FoodDiary instance from fatscrit data."""
+
     fooddiary = FoodDiary.objects.filter(user=user).first()
     project = Project.objects.filter(user=user).first()
     if fooddiary:
@@ -111,7 +119,7 @@ def get_fooddiary_objects(user):
         token=(user.fatsecret_token, user.fatsecret_secret)
     )
     fooddiary_objects = []
-    current_month = last_diary_date.month
+    last_diary_month = last_diary_date.month
     monthly_weights = get_fatsecret_data(
         session=session,
         params=PARAMS_WEIGHT,
@@ -124,13 +132,13 @@ def get_fooddiary_objects(user):
             params=PARAMS_FOOD_DAILY,
             date=last_diary_date
         )
-        if last_diary_date.month != current_month:
+        if last_diary_date.month != last_diary_month:
             monthly_weights = get_fatsecret_data(
                 session=session,
                 params=PARAMS_WEIGHT,
                 date=last_diary_date
             )
-            current_month = last_diary_date.month
+            last_diary_month = last_diary_date.month
         if food_entries:
             fooddiary_objects.append(
                 FoodDiary(**food_caclulator(

@@ -6,6 +6,8 @@ User = get_user_model()
 
 
 class BodyStatsDiary(models.Model):
+    """BodyStatsDiary model with user body measurements."""
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -61,6 +63,8 @@ class BodyStatsDiary(models.Model):
 
 
 class FoodDiary(models.Model):
+    """FoodDiary model with user food diary data."""
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -170,6 +174,8 @@ class FoodDiary(models.Model):
 
 
 class Project(models.Model):
+    """Project model."""
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,

@@ -2,7 +2,7 @@ from django_filters import rest_framework as filters
 
 
 class UniversalUserFilter(filters.FilterSet):
-    """Universal filter for models with user-related field"""
+    """Universal filter for models with user-related field."""
 
     user = filters.CharFilter(method='filter_by_user')
 

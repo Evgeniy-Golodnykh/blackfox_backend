@@ -18,7 +18,7 @@ error_image_message = 'Please choose an image with a size less than 5 mb'
 
 
 class CustomLoginSerializer(TokenObtainPairSerializer):
-    """A serializer to login User"""
+    """A serializer to login User."""
 
     def validate(self, attrs):
         attrs['email'] = attrs.get('email').lower()  # to ignore login case

@@ -15,12 +15,15 @@ from fatsecret.tools import get_fooddiary_objects
 from training.models import BodyStatsDiary, FoodDiary, Project
 
 User = get_user_model()
+
 fatsecret_account_not_exists_message = 'Please link your Fatsecret account'
 fatsecret_error_message = 'Fatsecret error: {error}'
 project_not_exists_message = 'Please create a project for current user'
 
 
 class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
+    """A viewset for viewing and editing BodyStatsDiary instances."""
+
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = UniversalUserFilter
@@ -37,6 +40,8 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
 
 
 class FoodDiaryViewSet(viewsets.ModelViewSet):
+    """A viewset for viewing and editing FoodDiary instances."""
+
     permission_classes = [IsAuthenticated]
     serializer_class = FoodDiarySerializer
     filter_backends = [DjangoFilterBackend]
@@ -76,6 +81,8 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
+    """A viewset for viewing and editing Project instances."""
+
     filter_backends = [DjangoFilterBackend]
     filterset_class = UniversalUserFilter
 
