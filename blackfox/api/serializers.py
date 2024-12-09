@@ -9,14 +9,12 @@ from users.serializers import CustomUserSerializer
 User = get_user_model()
 
 current_date = dt.date.today()
+max_old_date = current_date - dt.timedelta(91)
 error_coach_message = 'The coach does not have the appropriate role'
-error_big_date_message = 'The date cannot be greater than the current one'
-error_small_date_message = 'The date cannot be earlier than the last 3 months'
+error_date_message = f'Choose a date between {max_old_date} and {current_date}'
 error_user_message = 'The user is admin or coach, please choose another one'
-diary_entry_exists_message = (
-    'A diary entry for the current user and date already exists'
-)
-project_exists_message = 'A project with this User already exists'
+diary_exists_message = 'A diary entry for this user and date already exists'
+project_exists_message = 'A project with this user already exists'
 
 
 class BodyStatsDiarySerializer(serializers.ModelSerializer):
@@ -37,15 +35,15 @@ class CreateUpdateBodyStatsDiarySerializer(serializers.ModelSerializer):
         exclude = ('user',)
 
     def validate_date(self, input_date):
-        if input_date > current_date:
-            raise serializers.ValidationError(error_big_date_message)
+        if input_date < max_old_date or input_date > current_date:
+            raise serializers.ValidationError(error_date_message)
         return input_date
 
     def create(self, validated_data):
         user = self.context['request'].user
         date = validated_data.get('date')
         if BodyStatsDiary.objects.filter(user=user, date=date).exists():
-            raise serializers.ValidationError(diary_entry_exists_message)
+            raise serializers.ValidationError(diary_exists_message)
         validated_data['user'] = user
         return BodyStatsDiary.objects.create(**validated_data)
 
@@ -89,10 +87,8 @@ class CreateUpdateProjectSerializer(ProjectSerializer):
     )
 
     def validate_start_date(self, input_date):
-        if input_date > current_date:
-            raise serializers.ValidationError(error_big_date_message)
-        if input_date < current_date - dt.timedelta(91):
-            raise serializers.ValidationError(error_small_date_message)
+        if input_date < max_old_date or input_date > current_date:
+            raise serializers.ValidationError(error_date_message)
         return input_date
 
     def validate_coach(self, user):
