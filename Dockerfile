@@ -20,4 +20,4 @@ RUN python -m pip install --upgrade pip
 RUN pip3 install -r requirements.txt --no-cache-dir
 
 # Run entrypoint script with Cron service and BlackFox project
-ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
