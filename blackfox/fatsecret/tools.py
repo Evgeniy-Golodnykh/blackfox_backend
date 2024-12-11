@@ -7,11 +7,16 @@ from training.models import FoodDiary, Project
 
 CONSUMER_KEY = os.getenv('FATSECRET_CONSUMER_KEY')
 CONSUMER_SECRET = os.getenv('FATSECRET_CONSUMER_SECRET')
-REQUEST_TOKEN_URL = 'https://www.fatsecret.com/oauth/request_token'
-AUTHORIZE_URL = 'https://www.fatsecret.com/oauth/authorize'
-ACCESS_TOKEN_URL = 'https://www.fatsecret.com/oauth/access_token'
+REQUEST_TOKEN_URL = 'https://authentication.fatsecret.com/oauth/request_token'
+ACCESS_TOKEN_URL = 'https://authentication.fatsecret.com/oauth/access_token'
+AUTHORIZE_URL = 'https://authentication.fatsecret.com/oauth/authorize'
 BASE_URL = 'https://platform.fatsecret.com/rest/server.api'
+BLACKFOX_URL = 'https://fayustovna.github.io/blackfox-nutrition-app/'
 CALLBACK_URL = os.getenv('FATSECRET_CALLBACK_URL')
+PARAMS_FOOD_DAILY = {'method': 'food_entries.get.v2', 'format': 'json'}
+PARAMS_FOOD_MONTHLY = {'method': 'food_entries.get_month.v2', 'format': 'json'}
+PARAMS_WEIGHT = {'method': 'weights.get_month.v2', 'format': 'json'}
+
 
 fatsecret = OAuth1Service(
     consumer_key=CONSUMER_KEY,
@@ -21,11 +26,11 @@ fatsecret = OAuth1Service(
     authorize_url=AUTHORIZE_URL,
     base_url=BASE_URL,
 )
-params_food = {'method': 'food_entries.get.v2', 'format': 'json'}
-params_weight = {'method': 'weights.get_month.v2', 'format': 'json'}
 
 
 def unix_date_converter(date):
+    """A function to convert date to/from FatSceret format."""
+
     epoch = dt.date.fromtimestamp(0)
     if type(date) is str:
         return (dt.date.fromisoformat(date) - epoch).days
@@ -35,6 +40,8 @@ def unix_date_converter(date):
 
 
 def food_caclulator(foods, weight, project, date):
+    """A function for calculating and compiling a daily food diary."""
+
     instance = {
         'user': project.user,
         'date': date,
@@ -80,29 +87,27 @@ def food_caclulator(foods, weight, project, date):
     return instance
 
 
-def get_fatsecret_data(session, params, date, weight=False):
+def get_fatsecret_data(session, params, date):
+    """A function for obtaining FatSecret user data."""
+
     params['date'] = unix_date_converter(date)
     fatsecret_data = session.get(BASE_URL, params=params).json()
     if fatsecret_data.get('error'):
         message = fatsecret_data.get('error').get('message')
         raise KeyError(message)
-    if not weight:
+    if params['method'] is PARAMS_FOOD_DAILY['method']:
         return fatsecret_data.get('food_entries')
-    weights = {}
     monthly_weights = fatsecret_data['month'].get('day')
-    if not monthly_weights:
-        return weights
-    for daily_weight in monthly_weights:
-        weights[unix_date_converter(int(daily_weight['date_int']))] = float(
-            daily_weight['weight_kg']
-        )
-    return weights
+    return dict() if not monthly_weights else {
+        unix_date_converter(int(daily_weight['date_int'])):
+        float(daily_weight['weight_kg'])
+        for daily_weight in monthly_weights
+    }
 
 
 def get_fooddiary_objects(user):
-    session = fatsecret.get_session(
-        token=(user.fatsecret_token, user.fatsecret_secret)
-    )
+    """A function to create FoodDiary instance from fatscrit data."""
+
     fooddiary = FoodDiary.objects.filter(user=user).first()
     project = Project.objects.filter(user=user).first()
     if fooddiary:
@@ -110,30 +115,30 @@ def get_fooddiary_objects(user):
         FoodDiary.objects.filter(id=fooddiary.id).delete()
     else:
         last_diary_date = project.start_date
-
-    current_month = last_diary_date.month
-    monthly_weights = get_fatsecret_data(
-        session=session,
-        params=params_weight,
-        date=last_diary_date,
-        weight=True
+    session = fatsecret.get_session(
+        token=(user.fatsecret_token, user.fatsecret_secret)
     )
     fooddiary_objects = []
+    last_diary_month = last_diary_date.month
+    monthly_weights = get_fatsecret_data(
+        session=session,
+        params=PARAMS_WEIGHT,
+        date=last_diary_date
+    )
 
     while last_diary_date <= dt.date.today():
         food_entries = get_fatsecret_data(
             session=session,
-            params=params_food,
+            params=PARAMS_FOOD_DAILY,
             date=last_diary_date
         )
-        if last_diary_date.month != current_month:
+        if last_diary_date.month != last_diary_month:
             monthly_weights = get_fatsecret_data(
                 session=session,
-                params=params_weight,
-                date=last_diary_date,
-                weight=True
+                params=PARAMS_WEIGHT,
+                date=last_diary_date
             )
-            current_month = last_diary_date.month
+            last_diary_month = last_diary_date.month
         if food_entries:
             fooddiary_objects.append(
                 FoodDiary(**food_caclulator(
@@ -144,6 +149,5 @@ def get_fooddiary_objects(user):
                 ))
             )
         last_diary_date += dt.timedelta(1)
-
     session.close()
     return fooddiary_objects

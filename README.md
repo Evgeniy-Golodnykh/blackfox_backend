@@ -21,15 +21,29 @@ source venv/bin/activate
 python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
 ```
-5. To create the database use command
+5. Configure the .env file like this
+```bash
+ALLOWED_HOSTS=allowed_hosts
+DJANGO_SECRET_KEY=django_secret_key
+DB_ENGINE=django.db.backends.postgresql
+DB_NAME=db_name
+POSTGRES_USER=postgres_user
+POSTGRES_PASSWORD=postgres_password
+DB_HOST=db_host
+DB_PORT=db_port
+FATSECRET_CONSUMER_KEY=fatsecret_consumer_key
+FATSECRET_CONSUMER_SECRET=fatsecret_consumer_secret
+FATSECRET_CALLBACK_URL=https://fatsecret.callback.url/
+```
+6. To create the database use command
 ```bash
 python3 manage.py migrate
 ```
-6. To create the superuser use command
+7. To create the superuser use command
 ```bash
 python3 manage.py createsuperuser
 ```
-7. To run the application use command
+8. To run the application use command
 ```bash
 python3 manage.py runserver
 ```
@@ -41,9 +55,8 @@ http://127.0.0.1:8000/api/redoc/
 ### Technology
 [Python](https://www.python.org), [Django REST framework](https://www.django-rest-framework.org), [FatSecret API](https://platform.fatsecret.com/), [Django Crontab](https://pypi.org/project/django-crontab/), [PostgreSQL](https://www.postgresql.org/), [Docker](https://www.docker.com/), [GitHub Actions](https://github.com/features/actions)
 
-### Authors
+### Author
 [Evgeniy Golodnykh](https://github.com/Evgeniy-Golodnykh)  
-[Constantine Nazarov](https://github.com/K1N88)
 
 ### CI/CD pipeline status
 ![Blackfox workflow](https://github.com/Evgeniy-Golodnykh/blackfox_backend/actions/workflows/blackfox_workflow.yml/badge.svg)

@@ -10,19 +10,20 @@ from training.models import FoodDiary, Project
 DATETIME_FORMAT = '%d.%m.%Y %H:%M:%S'
 LOGFORMAT = '%(asctime)s [%(levelname)s] %(filename)s/%(funcName)s %(message)s'
 
-User = get_user_model()
-error_message = 'Updating data for user "{user}" failed with error "{err}"'
-successful_message = 'Autoupdate data for user "{user}" completed successfully'
-
 logging.basicConfig(
     datefmt=DATETIME_FORMAT,
     format=LOGFORMAT,
     level=logging.INFO,
 )
 
+User = get_user_model()
+
+error_message = 'Updating data for user "{user}" failed with error "{err}"'
+successful_message = 'Autoupdate data for user "{user}" completed successfully'
+
 
 def fooddiary_autoupdate():
-    """Autoupdate users Fatsecret data."""
+    """A function for Cron to autoupdate users Fatsecret data."""
 
     users = User.objects.filter(
         Q(fatsecret_token__isnull=False) & Q(fatsecret_secret__isnull=False)
@@ -37,4 +38,4 @@ def fooddiary_autoupdate():
             continue
         FoodDiary.objects.bulk_create(objs=objs)
         logging.info(successful_message.format(user=user.username))
-        time.sleep(5)
+        time.sleep(1)

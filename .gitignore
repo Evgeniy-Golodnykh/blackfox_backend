@@ -132,3 +132,7 @@ dmypy.json
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Infra
+nginx.conf
+docker-compose.yml
