@@ -23,14 +23,14 @@ python3 -m pip install -r requirements.txt
 ```
 5. Configure the .env file like this
 ```bash
-ALLOWED_HOSTS=allowed_hosts
+ALLOWED_HOSTS=127.0.0.1
 DJANGO_SECRET_KEY=django_secret_key
 DB_ENGINE=django.db.backends.postgresql
-DB_NAME=db_name
+DB_HOST=db
+DB_PORT=5432
+POSTGRES_DB_NAME=postgres_db_name
 POSTGRES_USER=postgres_user
 POSTGRES_PASSWORD=postgres_password
-DB_HOST=db_host
-DB_PORT=db_port
 FATSECRET_CONSUMER_KEY=fatsecret_consumer_key
 FATSECRET_CONSUMER_SECRET=fatsecret_consumer_secret
 FATSECRET_CALLBACK_URL=https://fatsecret.callback.url/
