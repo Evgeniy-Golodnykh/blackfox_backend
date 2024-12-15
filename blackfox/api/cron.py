@@ -19,7 +19,7 @@ logging.basicConfig(
 User = get_user_model()
 
 error_message = 'Updating data for user "{user}" failed with error "{err}"'
-successful_message = 'Autoupdate data for user "{user}" completed successfully'
+successful_message = 'Fatsecret data for user "{user}" successfully updated'
 
 
 def fooddiary_autoupdate():
