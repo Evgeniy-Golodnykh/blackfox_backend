@@ -72,6 +72,7 @@ jobs:
             sudo docker-compose rm -f nginx
             sudo docker image rm -f ${{ secrets.DOCKER_USERNAME }}/blackfox:latest
             sudo docker image rm -f ${{ secrets.FRONTEND_DOCKER_USERNAME }}/nutrition-app:latest
+            sudo docker volume rm -f root_frontend_build
             echo ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }} > .env
             echo DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} >> .env
             echo DB_ENGINE=${{ secrets.DB_ENGINE }} >> .env

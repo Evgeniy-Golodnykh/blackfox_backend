@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.shortcuts import get_object_or_404
@@ -38,6 +39,7 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
 class CustomUserSerializer(serializers.ModelSerializer):
     """A serializer to read User instances."""
 
+    image = serializers.SerializerMethodField(read_only=True)
     coach = serializers.SerializerMethodField(read_only=True)
     fatsecret_account = serializers.SerializerMethodField(read_only=True)
 
@@ -54,6 +56,11 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'coach',
             'fatsecret_account',
         )
+
+    def get_image(self, obj):
+        if obj.image:
+            return f'{settings.BASE_URL}{settings.MEDIA_URL}{obj.image.name}'
+        return None
 
     def get_coach(self, obj):
         user = get_object_or_404(User, email=obj.email)
