@@ -29,7 +29,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'NOT_SECRET')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [os.getenv('ALLOWED_HOSTS', 'NO_HOSTS'), '127.0.0.1']
+ALLOWED_HOSTS = [os.getenv('ALLOWED_HOSTS', 'NO_HOSTS'), '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -146,13 +146,11 @@ MEDIA_URL = '/media/'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# CORS_URLS_REGEX = r'^/api/.*$'
-
-CORS_URLS_REGEX = r'^.*$'
-
-CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+CORS_URLS_REGEX = r'^/api/.*$'
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOW_HEADERS = ['content-type', 'authorization', 'x-csrftoken']
 
 
 # Default primary key field type
