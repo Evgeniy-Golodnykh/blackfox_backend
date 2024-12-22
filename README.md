@@ -1,7 +1,7 @@
-# Blackfox website API
+# BlackFox Nutrition API
 
 ### Description
-This is API for [Blackfox website](https://fayustovna.github.io/blackfox-nutrition-app/)
+This is API for [BlackFox Nutrition](http://www.blackfoxnutrition.ru) website
 
 ### Quick Start
 1. Clone repo
@@ -49,8 +49,8 @@ python3 manage.py runserver
 ```
 
 ### API Documentation
-http://127.0.0.1:8000/api/swagger/  
-http://127.0.0.1:8000/api/redoc/
+http://localhost:8000/api/swagger/  
+http://localhost:8000/api/redoc/
 
 ### Technology
 [Python](https://www.python.org), [Django REST framework](https://www.django-rest-framework.org), [FatSecret API](https://platform.fatsecret.com/), [Django Crontab](https://pypi.org/project/django-crontab/), [PostgreSQL](https://www.postgresql.org/), [Docker](https://www.docker.com/), [GitHub Actions](https://github.com/features/actions)
