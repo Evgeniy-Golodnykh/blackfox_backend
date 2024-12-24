@@ -157,8 +157,6 @@ CORS_URLS_REGEX = r'^/api/.*$'
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-CORS_ALLOW_HEADERS = ['content-type', 'authorization', 'x-csrftoken']
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
