@@ -136,3 +136,4 @@ dmypy.json
 # Infra
 nginx.conf
 docker-compose.yml
+autoupdate_certs.sh
