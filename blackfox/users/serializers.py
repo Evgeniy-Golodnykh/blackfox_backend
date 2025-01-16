@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.shortcuts import get_object_or_404
-from djoser.compat import get_user_email, get_user_email_field_name
+from djoser.compat import get_user_email_field_name
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -192,11 +192,9 @@ class CustomUserUpdateSerializer(serializers.ModelSerializer):
         email_field = get_user_email_field_name(User)
         instance.email_changed = False
         if email_field in validated_data:
-            instance_email = get_user_email(instance)
-            if instance_email != validated_data[email_field]:
-                instance.is_active = False
-                instance.email_changed = True
-                instance.save(update_fields=['is_active'])
+            instance.is_active = False
+            instance.email_changed = True
+            instance.save(update_fields=['is_active'])
         return super().update(instance, validated_data)
 
     def to_representation(self, instance):
