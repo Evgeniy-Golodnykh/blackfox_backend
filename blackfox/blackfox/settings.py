@@ -76,7 +76,7 @@ ROOT_URLCONF = 'blackfox.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -106,12 +106,12 @@ DATABASES = {
     }
 }
 
-DATABASES = {
+'''DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': '/Users/evgeniygolodnykh/Desktop/blackfox_backend/db.sqlite3',
     }
-}
+}'''
 
 
 # Password validation
@@ -207,10 +207,15 @@ DJOSER = {
     'LOGIN_FIELD': 'email',
     'HIDE_USERS': False,
     'SET_PASSWORD_RETYPE': True,
+    'PASSWORD_RESET_CONFIRM_RETYPE': True,
     'SEND_ACTIVATION_EMAIL': True,
     'PASSWORD_RESET_SHOW_EMAIL_NOT_FOUND': True,
-    'ACTIVATION_URL': '/auth/activate/?uid={uid}&token={token}',
+    'ACTIVATION_URL': 'auth/activate/?uid={uid}&token={token}',
     'PASSWORD_RESET_CONFIRM_URL': 'auth/set_password/?uid={uid}&token={token}',
+    'EMAIL': {
+        'activation': 'users.email.ActivationEmail',
+        'password_reset': 'users.email.PasswordResetEmail',
+    },
     'SERIALIZERS': {
         'user': 'users.serializers.CustomUserSerializer',
         'user_create': 'users.serializers.CustomUserCreateSerializer',
