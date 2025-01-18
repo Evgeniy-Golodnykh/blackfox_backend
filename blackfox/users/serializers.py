@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.shortcuts import get_object_or_404
+from djoser.compat import get_user_email_field_name
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -137,6 +138,7 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
             role=validated_data['role'].lower(),
             first_name=validated_data['first_name'].capitalize(),
             last_name=validated_data['last_name'].capitalize(),
+            is_active=False,
         )
         user.set_password(validated_data['password'])
         user.save()
@@ -185,6 +187,15 @@ class CustomUserUpdateSerializer(serializers.ModelSerializer):
         if not value or value.size > 5 * 1024 * 1024:
             raise serializers.ValidationError(error_image_message)
         return value
+
+    def update(self, instance, validated_data):
+        email_field = get_user_email_field_name(User)
+        instance.email_changed = False
+        if email_field in validated_data:
+            instance.is_active = False
+            instance.email_changed = True
+            instance.save(update_fields=['is_active'])
+        return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         request = self.context.get('request')

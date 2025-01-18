@@ -18,6 +18,7 @@ User = get_user_model()
 
 fatsecret_account_not_exists_message = 'Please link your Fatsecret account'
 fatsecret_error_message = 'Fatsecret error: {error}'
+fooddiary_objects_create_message = 'Fooddiary objects successfully created'
 project_not_exists_message = 'Please create a project for current user'
 
 
@@ -40,7 +41,7 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
 
 
 class FoodDiaryViewSet(viewsets.ModelViewSet):
-    """A viewset for viewing and editing FoodDiary instances."""
+    """A viewset for creating and viewing FoodDiary instances."""
 
     permission_classes = [IsAuthenticated]
     serializer_class = FoodDiarySerializer
@@ -77,7 +78,10 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         FoodDiary.objects.bulk_create(objs=objs)
-        return Response(FoodDiarySerializer(objs, many=True).data)
+        return Response(
+            {'message': fooddiary_objects_create_message},
+            status=status.HTTP_201_CREATED
+        )
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
