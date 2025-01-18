@@ -40,11 +40,10 @@ class CreateUpdateBodyStatsDiarySerializer(serializers.ModelSerializer):
         return input_date
 
     def create(self, validated_data):
-        user = self.context['request'].user
+        user = validated_data.get('user')
         date = validated_data.get('date')
         if BodyStatsDiary.objects.filter(user=user, date=date).exists():
             raise serializers.ValidationError(diary_exists_message)
-        validated_data['user'] = user
         return BodyStatsDiary.objects.create(**validated_data)
 
     def to_representation(self, instance):
