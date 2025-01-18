@@ -71,7 +71,8 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         try:
-            objs = get_fooddiary_objects(user)
+            reload = True if request.query_params.get('reload') else False
+            objs = get_fooddiary_objects(user, reload=reload)
         except KeyError as error:
             return Response(
                 {'message': fatsecret_error_message.format(error=error)},

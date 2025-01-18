@@ -105,12 +105,15 @@ def get_fatsecret_data(session, params, date):
     }
 
 
-def get_fooddiary_objects(user):
+def get_fooddiary_objects(user, reload=False):
     """A function to create FoodDiary instance from fatscrit data."""
 
     fooddiary = FoodDiary.objects.filter(user=user).first()
     project = Project.objects.filter(user=user).first()
-    if fooddiary:
+    if reload:
+        last_diary_date = project.start_date
+        FoodDiary.objects.filter(user=user).delete()
+    elif fooddiary:
         last_diary_date = fooddiary.date
         FoodDiary.objects.filter(id=fooddiary.id).delete()
     else:
