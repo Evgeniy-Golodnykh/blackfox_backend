@@ -39,6 +39,15 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
             return BodyStatsDiary.objects.all()
         return BodyStatsDiary.objects.filter(user=self.request.user)
 
+    def perform_create(self, serializer):
+        if self.request.user.is_admin or self.request.user.is_coach:
+            user = get_object_or_404(
+                User, username=self.request.query_params.get('user')
+            )
+        else:
+            user = self.request.user
+        serializer.save(user=user)
+
 
 class FoodDiaryViewSet(viewsets.ModelViewSet):
     """A viewset for creating and viewing FoodDiary instances."""
