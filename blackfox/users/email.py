@@ -1,6 +1,7 @@
 from datetime import datetime as dt
 
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from djoser import email
 
 User = get_user_model()
@@ -27,10 +28,12 @@ class PasswordResetEmail(email.PasswordResetEmail):
 
 
 def email_context_processor(request):
-    if not hasattr(request, 'data') or not request.data.get('email'):
+    '''Context processor to send email messages.'''
+
+    if not hasattr(request, 'data') or 'email' not in request.data:
         return {}
     current_date = dt.now()
-    user = User.objects.filter(email=request.data.get('email')).first()
+    user = get_object_or_404(User, email=request.data.get('email'))
     email_changed = current_date.date() > user.date_joined.date()
     return {
         'user_firstname': user.first_name,
