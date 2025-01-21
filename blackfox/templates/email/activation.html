@@ -5,16 +5,16 @@
 {% endblock subject %}
 
 {% block html_body %}
-<div style="max-width: 900px; margin: 0; border-radius: 5px; padding: 20px; font-family: Arial, sans-serif; background-color: #f9f9f9; color: #333;">
+<div style="max-width: 900px; margin: 0; border-radius: 8px; padding: 20px; font-family: Arial, sans-serif; background-color: #f9f9f9; color: #333;">
     <h2>{% blocktrans %}Активация аккаунта{% endblocktrans %}</h2>
-    <p>{% blocktrans %}{{ first_name }}, здравствуйте!{% endblocktrans %}</p>
-    <p>{% blocktrans %}Cпасибо за регистрацию на сайте <b>BlackFox Nutrition</b>. Чтобы активировать вашу учетную запись, пожалуйста, нажмите на кнопку ниже:{% endblocktrans %}</p>
-    <a href="https://www.blackfoxnutrition.ru/{{ url|safe }}" style="display: inline-block; padding: 10px 20px; color: #fff; background-color: #007BFF; text-decoration: none; border-radius: 5px;">
+    <p>{% blocktrans %}{{ user_firstname }}, здравствуйте!{% endblocktrans %}</p>
+    <p>{% blocktrans %}{{ intro_message }} на сайте <b>BlackFox Nutrition</b>. Чтобы активировать вашу учетную запись, пожалуйста, нажмите на кнопку ниже:{% endblocktrans %}</p>
+    <a href="https://www.blackfoxnutrition.ru/{{ url|safe }}" style="display: inline-block; padding: 10px 20px; color: #fff; background-color: #0071E3; text-decoration: none; border-radius: 8px;">
         {% blocktrans %}Активировать аккаунт{% endblocktrans %}
     </a>
-    <p>{% blocktrans %}Если вы не регистрировались на нашем сайте, просто проигнорируйте это письмо.{% endblocktrans %}</p>
+    <p>{% blocktrans %}{{ close_message }} на нашем сайте, просто проигнорируйте это письмо.{% endblocktrans %}</p>
     <p>{% blocktrans %}Спасибо, что выбрали нас!{% endblocktrans %}</p>
-    <footer style="margin-top: 20px; font-size: 0.9em; color: #777;">
+    <footer style="margin-top: 25px; font-size: 0.9em; color: #777;">
         {% blocktrans %}&copy; BlackFox Nutrition, {{ year }} г. Все права защищены.{% endblocktrans %}
     </footer>
 </div>
