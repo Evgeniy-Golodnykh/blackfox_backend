@@ -30,14 +30,14 @@ class PasswordResetEmail(email.PasswordResetEmail):
 def email_context_processor(request):
     '''Context processor to send email messages.'''
 
-    if not hasattr(request, 'data') or 'email' not in request.data:
-        return {}
-    current_date = dt.now()
-    user = get_object_or_404(User, email=request.data.get('email'))
-    email_changed = current_date.date() > user.date_joined.date()
-    return {
-        'user_firstname': user.first_name,
-        'intro_message': intro_message[email_changed],
-        'close_message': close_message[email_changed],
-        'year': current_date.year,
-    }
+    if hasattr(request, 'data') and 'email' in request.data:
+        current_date = dt.now()
+        user = get_object_or_404(User, email=request.data.get('email'))
+        email_changed = current_date.date() > user.date_joined.date()
+        return {
+            'user_firstname': user.first_name,
+            'intro_message': intro_message[email_changed],
+            'close_message': close_message[email_changed],
+            'year': current_date.year,
+        }
+    return dict()
