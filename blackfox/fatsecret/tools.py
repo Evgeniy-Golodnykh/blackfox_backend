@@ -1,5 +1,6 @@
 import datetime as dt
 import os
+from collections import Counter
 
 from rauth import OAuth1Service
 
@@ -16,6 +17,7 @@ CALLBACK_URL = os.getenv('FATSECRET_CALLBACK_URL')
 PARAMS_FOOD_DAILY = {'method': 'food_entries.get.v2', 'format': 'json'}
 PARAMS_FOOD_MONTHLY = {'method': 'food_entries.get_month.v2', 'format': 'json'}
 PARAMS_WEIGHT = {'method': 'weights.get_month.v2', 'format': 'json'}
+FOOD_FIELDS = ['calories', 'carbohydrate', 'fat', 'fiber', 'protein', 'sugar']
 
 
 fatsecret = OAuth1Service(
@@ -39,7 +41,7 @@ def unix_date_converter(date):
     return (date - epoch).days
 
 
-def food_caclulator(foods, weight, project, date):
+def daily_food_caclulator(foods, weight, project, date):
     """A function for calculating and compiling a daily food diary."""
 
     instance = {
@@ -55,36 +57,26 @@ def food_caclulator(foods, weight, project, date):
         'weight_target': project.target_weight,
     }
     for food in foods:
-        instance['calories_actual'] = (
-            instance.get('calories_actual', 0)
-            + int(food.get('calories', 0))
-        )
-        instance['carbohydrate_actual'] = round(
-            (instance.get('carbohydrate_actual', 0)
-             + float(food.get('carbohydrate', 0))),
-            2
-        )
-        instance['fat_actual'] = round(
-            (instance.get('fat_actual', 0)
-             + float(food.get('fat', 0))),
-            2
-        )
-        instance['fiber_actual'] = round(
-            (instance.get('fiber_actual', 0)
-             + float(food.get('fiber', 0))),
-            2
-        )
-        instance['protein_actual'] = round(
-            (instance.get('protein_actual', 0)
-             + float(food.get('protein', 0))),
-            2
-        )
-        instance['sugar_actual'] = round(
-            (instance.get('sugar_actual', 0)
-             + float(food.get('sugar', 0))),
-            2
-        )
+        for field in FOOD_FIELDS:
+            key = f'{field}_actual'
+            instance[key] = round(
+                instance.get(key, 0) + float(food.get(field, 0)), 2
+            )
     return instance
+
+
+def unique_food_nutrients_caclulator(daily_foods, sum_foods):
+    """A function for calculating nutrients of unique food."""
+
+    for food in daily_foods:
+        food_entry_name = food.get('food_entry_name')
+        food_params = {
+            key: round(float(food.get(key, 0))) for key in FOOD_FIELDS
+        }
+        accumulated_food = Counter(sum_foods.get(food_entry_name))
+        accumulated_food.update(Counter(food_params))
+        sum_foods[food_entry_name] = dict(accumulated_food)
+    return sum_foods
 
 
 def get_fatsecret_data(session, params, date):
@@ -130,7 +122,7 @@ def get_fooddiary_objects(user, reload=False):
     )
 
     while last_diary_date <= dt.date.today():
-        food_entries = get_fatsecret_data(
+        daily_foods = get_fatsecret_data(
             session=session,
             params=PARAMS_FOOD_DAILY,
             date=last_diary_date
@@ -142,15 +134,42 @@ def get_fooddiary_objects(user, reload=False):
                 date=last_diary_date
             )
             last_diary_month = last_diary_date.month
-        if food_entries:
+        if daily_foods:
             fooddiary_objects.append(
-                FoodDiary(**food_caclulator(
-                    foods=food_entries.get('food_entry'),
+                FoodDiary(**daily_food_caclulator(
+                    foods=daily_foods.get('food_entry'),
                     weight=monthly_weights.get(last_diary_date),
                     project=project,
                     date=last_diary_date
                 ))
             )
         last_diary_date += dt.timedelta(1)
+
     session.close()
     return fooddiary_objects
+
+
+def get_weekly_food_nutrients(user):
+    """A function for obtaining weekly foods nutrients."""
+
+    session = fatsecret.get_session(
+        token=(user.fatsecret_token, user.fatsecret_secret)
+    )
+    current_date = dt.date.today()
+    last_diary_date = current_date - dt.timedelta(7)
+    weekly_foods = {}
+
+    while last_diary_date < current_date:
+        daily_foods = get_fatsecret_data(
+            session=session,
+            params=PARAMS_FOOD_DAILY,
+            date=last_diary_date
+        )
+        if daily_foods:
+            weekly_foods = unique_food_nutrients_caclulator(
+                daily_foods.get('food_entry'), weekly_foods
+            )
+        last_diary_date += dt.timedelta(1)
+
+    session.close()
+    return weekly_foods

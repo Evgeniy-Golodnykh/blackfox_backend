@@ -47,7 +47,7 @@ class User(AbstractUser):
     class Meta:
         verbose_name = 'User'
         verbose_name_plural = 'Users'
-        ordering = ['username']
+        ordering = ['email']
 
     @property
     def is_admin(self):
