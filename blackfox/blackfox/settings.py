@@ -232,6 +232,7 @@ SIMPLE_JWT = {
 
 CRONJOBS = [
     ('0 1 * * *', 'api.cron.fooddiary_autoupdate', '>> /var/log/cron.log 2>&1'),
+    ('0 2 * * *', 'api.cron.delete_inactive_users', '>> /var/log/cron.log 2>&1'),
 ]
 
 SPECTACULAR_SETTINGS = {

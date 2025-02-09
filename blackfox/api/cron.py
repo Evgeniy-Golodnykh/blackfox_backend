@@ -1,3 +1,4 @@
+import datetime as dt
 import logging
 import time
 
@@ -18,8 +19,13 @@ logging.basicConfig(
 
 User = get_user_model()
 
-error_message = 'Updating data for user "{user}" failed with error "{err}"'
-successful_message = 'Fatsecret data for user "{user}" successfully updated'
+fooddiary_autoupdate_error_message = (
+    'Updating data for user "{user}" failed with error "{err}"'
+)
+fooddiary_autoupdate_successful_message = (
+    'Fatsecret data for user "{user}" successfully updated'
+)
+delete_inactive_user_message = 'Inactive user "{user}" has been deleted'
 
 
 def fooddiary_autoupdate():
@@ -34,8 +40,24 @@ def fooddiary_autoupdate():
         try:
             objs = get_fooddiary_objects(user)
         except Exception as err:
-            logging.error(error_message.format(user=user.username, err=err))
+            logging.error(fooddiary_autoupdate_error_message.format(
+                user=user.username, err=err
+            ))
             continue
         FoodDiary.objects.bulk_create(objs=objs)
-        logging.info(successful_message.format(user=user.username))
+        logging.info(fooddiary_autoupdate_successful_message.format(
+            user=user.username
+        ))
         time.sleep(1)
+
+
+def delete_inactive_users():
+    """A function for Cron to delete inactive users."""
+
+    inactive_users = User.objects.filter(Q(is_active=False))
+    for user in inactive_users:
+        if (dt.date.today() - user.date_joined.date()).days > 1:
+            User.objects.filter(id=user.id).delete()
+            logging.info(delete_inactive_user_message.format(
+                user=user.username
+            ))
