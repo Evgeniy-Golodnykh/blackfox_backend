@@ -25,7 +25,7 @@ fooddiary_autoupdate_error_message = (
 fooddiary_autoupdate_successful_message = (
     'Fatsecret data for user "{user}" successfully updated'
 )
-delete_inactive_user_message = 'Inactive user "{user}" has been deleted'
+delete_inactive_user_message = 'Inactive {role} "{user}" has been deleted'
 
 
 def fooddiary_autoupdate():
@@ -59,5 +59,5 @@ def delete_inactive_users():
         if (dt.date.today() - user.date_joined.date()).days > 1:
             User.objects.filter(id=user.id).delete()
             logging.info(delete_inactive_user_message.format(
-                user=user.username
+                role=user.role, user=user.username
             ))
