@@ -58,6 +58,6 @@ def delete_inactive_users():
     for user in inactive_users:
         if (dt.date.today() - user.date_joined.date()).days > 1:
             User.objects.filter(id=user.id).delete()
-            logging.info(delete_inactive_user_message.format(
+            logging.warning(delete_inactive_user_message.format(
                 role=user.role, user=user.username
             ))
