@@ -35,7 +35,7 @@ EMAIL_HOST_USER=email@host.user
 EMAIL_HOST_PASSWORD=email_host_password
 FATSECRET_CONSUMER_KEY=fatsecret_consumer_key
 FATSECRET_CONSUMER_SECRET=fatsecret_consumer_secret
-FATSECRET_CALLBACK_URL=https://fatsecret.callback.url
+FATSECRET_CALLBACK_URL=https://yoursite.com/callback_url
 ```
 6. To create the database use command
 ```bash
