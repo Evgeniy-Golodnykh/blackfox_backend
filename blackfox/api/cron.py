@@ -48,7 +48,7 @@ def fooddiary_autoupdate():
         logging.info(fooddiary_autoupdate_successful_message.format(
             user=user.username
         ))
-        time.sleep(1)
+        time.sleep(30)
 
 
 def delete_inactive_users():
