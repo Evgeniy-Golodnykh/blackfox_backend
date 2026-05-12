@@ -98,18 +98,20 @@ def get_fatsecret_data(session, params, date):
 
 
 def get_fooddiary_objects(user, reload=False):
-    """A function to create FoodDiary instance from fatscrit data."""
+    """A function to create FoodDiary instance from FatSecret data."""
 
     fooddiary = FoodDiary.objects.filter(user=user).first()
     project = Project.objects.filter(user=user).first()
+    lookback_date = dt.date.today() - dt.timedelta(90)
     if reload:
         last_diary_date = project.start_date
         FoodDiary.objects.filter(user=user).delete()
     elif fooddiary:
-        last_diary_date = fooddiary.date
-        FoodDiary.objects.filter(id=fooddiary.id).delete()
+        last_diary_date = max(fooddiary.date, lookback_date)
+        if last_diary_date > lookback_date:
+            fooddiary.delete()
     else:
-        last_diary_date = project.start_date
+        last_diary_date = max(project.start_date, lookback_date)
     session = fatsecret.get_session(
         token=(user.fatsecret_token, user.fatsecret_secret)
     )
