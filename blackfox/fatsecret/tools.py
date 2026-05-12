@@ -99,7 +99,7 @@ def get_fatsecret_data(session, params, date):
 
 def get_fooddiary_objects(user, reload=False):
     """A function to create FoodDiary instance from FatSecret data."""
- 
+
     fooddiary = FoodDiary.objects.filter(user=user).first()
     project = Project.objects.filter(user=user).first()
     lookback_date = dt.date.today() - dt.timedelta(90)
