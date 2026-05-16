@@ -3,10 +3,9 @@ import logging
 import time
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
 
 from fatsecret.tools import get_fooddiary_objects
-from training.models import FoodDiary, Project
+from training.models import FoodDiary
 
 DATETIME_FORMAT = '%d.%m.%Y %H:%M:%S'
 LOGFORMAT = '%(asctime)s [%(levelname)s] %(filename)s/%(funcName)s %(message)s'
@@ -32,32 +31,35 @@ def fooddiary_autoupdate():
     """A function for Cron to autoupdate users Fatsecret data."""
 
     users = User.objects.filter(
-        Q(fatsecret_token__isnull=False) & Q(fatsecret_secret__isnull=False)
+        fatsecret_token__isnull=False,
+        fatsecret_secret__isnull=False,
+        project_user__isnull=False,
     )
     for user in users:
-        if not Project.objects.filter(user=user).exists():
-            continue
         try:
             objs = get_fooddiary_objects(user)
+            FoodDiary.objects.bulk_create(objs=objs, batch_size=500)
+            logging.info(fooddiary_autoupdate_successful_message.format(
+                user=user.username
+            ))
+            time.sleep(15)
         except Exception as err:
             logging.error(fooddiary_autoupdate_error_message.format(
                 user=user.username, err=err
             ))
-            continue
-        FoodDiary.objects.bulk_create(objs=objs)
-        logging.info(fooddiary_autoupdate_successful_message.format(
-            user=user.username
-        ))
-        time.sleep(30)
 
 
 def delete_inactive_users():
     """A function for Cron to delete inactive users."""
 
-    inactive_users = User.objects.filter(Q(is_active=False))
+    inactive_users = User.objects.filter(
+        is_active=False,
+        date_joined__date__lt=dt.date.today() - dt.timedelta(days=2)
+    )
+    if not inactive_users.exists():
+        return
     for user in inactive_users:
-        if (dt.date.today() - user.date_joined.date()).days > 1:
-            User.objects.filter(id=user.id).delete()
-            logging.warning(delete_inactive_user_message.format(
-                role=user.role, user=user.username
-            ))
+        logging.warning(delete_inactive_user_message.format(
+            role=user.role, user=user.username
+        ))
+    inactive_users.delete()
