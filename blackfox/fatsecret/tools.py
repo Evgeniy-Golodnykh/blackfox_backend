@@ -104,7 +104,7 @@ def get_fooddiary_objects(user, reload=False):
     project = Project.objects.filter(user=user).first()
     lookback_date = dt.date.today() - dt.timedelta(90)
     if reload:
-        last_diary_date = project.start_date
+        last_diary_date = max(project.start_date, lookback_date)
         FoodDiary.objects.filter(user=user).delete()
     elif fooddiary:
         last_diary_date = max(fooddiary.date, lookback_date)
