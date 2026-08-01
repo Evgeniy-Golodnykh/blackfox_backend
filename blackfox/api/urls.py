@@ -1,4 +1,4 @@
-"""URLs for API version 1."""
+"""URLs for API version 1.1"""
 
 from django.urls import include, path
 from djoser.views import UserViewSet
@@ -7,12 +7,17 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView, TokenRefreshView,
 )
 
-from api.views import BodyStatsDiaryViewSet, FoodDiaryViewSet, ProjectViewSet
+from api.views import (
+    ArticleViewSet, BodyStatsDiaryViewSet, FoodDiaryViewSet, ProjectViewSet,
+    VideoViewSet,
+)
 
 router = DefaultRouter()
 router.register('bodystats', BodyStatsDiaryViewSet, basename='bodystats')
 router.register('fooddiary', FoodDiaryViewSet, basename='fooddiary')
 router.register('project', ProjectViewSet, basename='project')
+router.register('articles', ArticleViewSet, basename='article')
+router.register('videos', VideoViewSet, basename='video')
 
 urlpatterns = [
     path('signup/', UserViewSet.as_view({'post': 'create'}), name='signup'),

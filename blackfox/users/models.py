@@ -5,6 +5,11 @@ from django.db import models
 class User(AbstractUser):
     """Custom User model."""
 
+    class Gender(models.TextChoices):
+
+        MALE = 'male'
+        FEMALE = 'female'
+
     class Roles(models.TextChoices):
 
         USER = 'user'
@@ -22,8 +27,15 @@ class User(AbstractUser):
         blank=True,
         null=True,
     )
+    gender = models.CharField(
+        max_length=6,
+        choices=Gender.choices,
+        default=None,
+        verbose_name='gender',
+        null=True,
+    )
     role = models.CharField(
-        max_length=9,
+        max_length=5,
         choices=Roles.choices,
         default=Roles.USER,
         verbose_name='role',

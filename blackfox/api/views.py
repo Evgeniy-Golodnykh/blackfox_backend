@@ -5,14 +5,16 @@ from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from api.filters import UniversalUserFilter
+from api.filters import UniversalUserCoachFilter, UniversalUserFilter
 from api.permissions import IsAdmin, IsAdminOrCoach
-from api.serializers import (
+from content.models import Article, Video
+from content.serializers import ArticleSerializer, VideoSerializer
+from fatsecret.tools import get_fooddiary_objects
+from training.models import BodyStatsDiary, FoodDiary, Project
+from training.serializers import (
     BodyStatsDiarySerializer, CreateUpdateBodyStatsDiarySerializer,
     CreateUpdateProjectSerializer, FoodDiarySerializer, ProjectSerializer,
 )
-from fatsecret.tools import get_fooddiary_objects
-from training.models import BodyStatsDiary, FoodDiary, Project
 
 User = get_user_model()
 
@@ -23,7 +25,7 @@ project_not_exists_message = 'Please create a project for current user'
 
 
 class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
-    """A viewset for viewing and editing BodyStatsDiary instances."""
+    """ViewSet for viewing and editing BodyStatsDiary instances."""
 
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
@@ -50,7 +52,7 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
 
 
 class FoodDiaryViewSet(viewsets.ModelViewSet):
-    """A viewset for creating and viewing FoodDiary instances."""
+    """ViewSet for viewing and editing FoodDiary instances."""
 
     permission_classes = [IsAuthenticated]
     serializer_class = FoodDiarySerializer
@@ -95,10 +97,10 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    """A viewset for viewing and editing Project instances."""
+    """ViewSet for viewing and editing Project instances."""
 
     filter_backends = [DjangoFilterBackend]
-    filterset_class = UniversalUserFilter
+    filterset_class = UniversalUserCoachFilter
 
     def get_permissions(self):
         if self.action == 'create':
@@ -118,3 +120,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if self.request.user.is_coach:
             return Project.objects.filter(coach=self.request.user)
         return Project.objects.filter(user=self.request.user)
+
+
+class ArticleViewSet(viewsets.ModelViewSet):
+    """ViewSet for viewing and editing Article instances."""
+
+    queryset = Article.objects.all()
+    serializer_class = ArticleSerializer
+    permission_classes = [IsAdmin]
+
+
+class VideoViewSet(viewsets.ModelViewSet):
+    """ViewSet for viewing and editing Video instances."""
+
+    queryset = Video.objects.all()
+    serializer_class = VideoSerializer
+    permission_classes = [IsAdmin]

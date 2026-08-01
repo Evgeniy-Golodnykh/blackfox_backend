@@ -14,6 +14,7 @@ error_email_message = 'A user with this e-mail already exists'
 error_username_message = 'A user with that username already exists'
 error_first_name_message = 'Please enter your firstname'
 error_last_name_message = 'Please enter your lastname'
+error_gender_message = 'Please choose correct gender'
 error_role_message = 'Please choose correct role'
 error_match_password_message = 'Password confirmation does not match'
 error_image_message = 'Please choose an image with a size less than 5 mb'
@@ -31,6 +32,11 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
         data['email'] = self.user.email
         data['first_name'] = self.user.first_name
         data['last_name'] = self.user.last_name
+        data['image'] = (
+            f'{settings.BASE_URL}{settings.MEDIA_URL}{self.user.image.name}'
+            if self.user.image else None
+        )
+        data['gender'] = self.user.gender
         data['role'] = self.user.role
         data['coach'] = project.coach.username if project else None
         data['fatsecret_account'] = self.user.fatsecret_token is not None
@@ -53,6 +59,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'image',
+            'gender',
             'role',
             'coach',
             'fatsecret_account',
@@ -93,6 +100,11 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         required=True,
         max_length=100
     )
+    gender = serializers.CharField(
+        write_only=True,
+        required=True,
+        max_length=6
+    )
     role = serializers.CharField(
         write_only=True,
         required=True,
@@ -108,6 +120,7 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
             'confirm_password',
             'first_name',
             'last_name',
+            'gender',
             'role',
         )
 
@@ -119,6 +132,11 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
     def validate_username(self, value):
         if User.objects.filter(username=value.lower()).exists():
             raise serializers.ValidationError(error_username_message)
+        return value
+
+    def validate_gender(self, value):
+        if value.lower() not in ('male', 'female'):
+            raise serializers.ValidationError(error_gender_message)
         return value
 
     def validate_role(self, value):
@@ -135,6 +153,7 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         user = User.objects.create(
             username=validated_data['username'].lower(),
             email=validated_data['email'].lower(),
+            gender=validated_data['gender'].lower(),
             role=validated_data['role'].lower(),
             first_name=validated_data['first_name'].capitalize(),
             last_name=validated_data['last_name'].capitalize(),
