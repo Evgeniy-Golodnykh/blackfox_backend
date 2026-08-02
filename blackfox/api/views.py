@@ -103,11 +103,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
     filterset_class = UniversalUserCoachFilter
 
     def get_permissions(self):
-        if self.action == 'create':
-            return [IsAdmin()]
-        if self.action in ('partial_update', 'update'):
-            return [IsAdminOrCoach()]
-        return [IsAuthenticated()]
+        if self.action in ('list', 'retrieve'):
+            return [IsAuthenticated()]
+        return [IsAdminOrCoach()]
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update', 'update'):
@@ -127,7 +125,11 @@ class ArticleViewSet(viewsets.ModelViewSet):
 
     queryset = Article.objects.all()
     serializer_class = ArticleSerializer
-    permission_classes = [IsAdmin]
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsAuthenticated()]
+        return [IsAdmin()]
 
 
 class VideoViewSet(viewsets.ModelViewSet):
@@ -135,4 +137,8 @@ class VideoViewSet(viewsets.ModelViewSet):
 
     queryset = Video.objects.all()
     serializer_class = VideoSerializer
-    permission_classes = [IsAdmin]
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsAuthenticated()]
+        return [IsAdmin()]
