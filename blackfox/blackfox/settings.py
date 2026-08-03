@@ -218,7 +218,6 @@ DJOSER = {
         'activation': 'users.email.ActivationEmail',
         'password_reset': 'users.email.PasswordResetEmail',
     },
-    'USER_VIEW_SET': 'users.views.CustomUserViewSet',
     'SERIALIZERS': {
         'user': 'users.serializers.CustomUserSerializer',
         'user_create': 'users.serializers.CustomUserCreateSerializer',
