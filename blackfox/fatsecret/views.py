@@ -26,7 +26,7 @@ class RequestTokenView(APIView):
             method='GET', params={'oauth_callback': CALLBACK_URL}
         )
         authorize_url = fatsecret.get_authorize_url(request_token)
-        cache.set(request_token, (request_token_secret, request.user), 300)
+        cache.set(request_token, (request_token_secret, request.user), 900)
         return Response(
             {'authorize_url': authorize_url},
             status=status.HTTP_200_OK
@@ -36,18 +36,18 @@ class RequestTokenView(APIView):
 class AccessTokenView(APIView):
     """A view to access FatSecret token."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = [AllowAny]
 
     def get(self, request):
         verifier = request.query_params.get('oauth_verifier')
         request_token = request.query_params.get('oauth_token')
         request_token_secret, user = cache.get(request_token, (None, None))
-        cache.delete(request_token)
-        if not verifier or not request_token or not request_token_secret:
+        if not (verifier and request_token and request_token_secret):
             return Response(
                 {'message': error_request_message},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        cache.delete(request_token)
         session = fatsecret.get_auth_session(
             request_token, request_token_secret,
             method='POST', data={'oauth_verifier': verifier}
