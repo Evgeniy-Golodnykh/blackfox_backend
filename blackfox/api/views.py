@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -27,8 +26,6 @@ project_not_exists_message = 'Please create a project for current user'
 class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
     """ViewSet for viewing and editing BodyStatsDiary instances."""
 
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
     filterset_class = UniversalUserFilter
 
     def get_serializer_class(self):
@@ -54,9 +51,7 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
 class FoodDiaryViewSet(viewsets.ModelViewSet):
     """ViewSet for viewing and editing FoodDiary instances."""
 
-    permission_classes = [IsAuthenticated]
     serializer_class = FoodDiarySerializer
-    filter_backends = [DjangoFilterBackend]
     filterset_class = UniversalUserFilter
 
     def get_queryset(self):
@@ -99,7 +94,6 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
 class ProjectViewSet(viewsets.ModelViewSet):
     """ViewSet for viewing and editing Project instances."""
 
-    filter_backends = [DjangoFilterBackend]
     filterset_class = UniversalUserCoachFilter
 
     def get_permissions(self):
