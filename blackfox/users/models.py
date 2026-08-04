@@ -6,15 +6,13 @@ class User(AbstractUser):
     """Custom User model."""
 
     class Gender(models.TextChoices):
-
-        MALE = 'male'
         FEMALE = 'female'
+        MALE = 'male'
 
     class Roles(models.TextChoices):
-
-        USER = 'user'
-        COACH = 'coach'
         ADMIN = 'admin'
+        COACH = 'coach'
+        USER = 'user'
 
     email = models.EmailField(
         max_length=254,
