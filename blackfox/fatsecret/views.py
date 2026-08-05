@@ -47,7 +47,6 @@ class AccessTokenView(APIView):
                 {'message': error_request_message},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        cache.delete(request_token)
         session = fatsecret.get_auth_session(
             request_token, request_token_secret,
             method='POST', data={'oauth_verifier': verifier}
@@ -56,6 +55,7 @@ class AccessTokenView(APIView):
         user.fatsecret_secret = session.access_token_secret
         user.save()
         session.close()
+        cache.delete(request_token)
         return redirect(BLACKFOX_URL)
 
 
