@@ -6,9 +6,9 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView, TokenRefreshView,
 )
 
-from api.views import (
-    ArticleViewSet, BodyStatsDiaryViewSet, FoodDiaryViewSet, ProjectViewSet,
-    VideoViewSet,
+from content.views import ArticleViewSet, VideoViewSet
+from training.views import (
+    BodyStatsDiaryViewSet, FoodDiaryViewSet, ProjectViewSet,
 )
 from users.views import CustomUserViewSet
 

@@ -5,9 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from api.filters import UniversalUserCoachFilter, UniversalUserFilter
-from api.permissions import IsAdmin, IsAdminOrCoach
-from content.models import Article, Video
-from content.serializers import ArticleSerializer, VideoSerializer
+from api.permissions import IsAdminOrCoach
 from fatsecret.tools import get_fooddiary_objects
 from training.models import BodyStatsDiary, FoodDiary, Project
 from training.serializers import (
@@ -112,27 +110,3 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if self.request.user.is_coach:
             return Project.objects.filter(coach=self.request.user)
         return Project.objects.filter(user=self.request.user)
-
-
-class ArticleViewSet(viewsets.ModelViewSet):
-    """ViewSet for viewing and editing Article instances."""
-
-    queryset = Article.objects.all()
-    serializer_class = ArticleSerializer
-
-    def get_permissions(self):
-        if self.action in ('list', 'retrieve'):
-            return [IsAuthenticated()]
-        return [IsAdmin()]
-
-
-class VideoViewSet(viewsets.ModelViewSet):
-    """ViewSet for viewing and editing Video instances."""
-
-    queryset = Video.objects.all()
-    serializer_class = VideoSerializer
-
-    def get_permissions(self):
-        if self.action in ('list', 'retrieve'):
-            return [IsAuthenticated()]
-        return [IsAdmin()]
