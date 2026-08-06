@@ -4,13 +4,13 @@ from djoser import email
 
 intro_activation_message = (
     'Cпасибо за регистрацию',
-    'Вы изменили адрес электронной почты'
+    'Вы изменили адрес электронной почты',
 )
 close_activation_message = (
     'Если вы не регистрировались',
-    'Если вы не изменяли адрес электронной почты'
+    'Если вы не изменяли адрес электронной почты',
 )
-email_url = '/api/users/me'
+update_url = '/api/users/me'
 
 
 class ActivationEmail(email.ActivationEmail):
@@ -20,9 +20,8 @@ class ActivationEmail(email.ActivationEmail):
 
     def get_context_data(self):
         context = super().get_context_data()
-        user = self.context.get('user')
-        email_changed = email_url in self.request.path
-        context['user_firstname'] = user.first_name
+        email_changed = update_url in self.request.path
+        context['user_firstname'] = self.context.get('user').first_name
         context['intro_message'] = intro_activation_message[email_changed]
         context['close_message'] = close_activation_message[email_changed]
         context['year'] = dt.now().year
