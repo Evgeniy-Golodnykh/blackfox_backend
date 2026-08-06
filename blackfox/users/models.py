@@ -5,11 +5,14 @@ from django.db import models
 class User(AbstractUser):
     """Custom User model."""
 
-    class Roles(models.TextChoices):
+    class Gender(models.TextChoices):
+        FEMALE = 'female'
+        MALE = 'male'
 
-        USER = 'user'
-        COACH = 'coach'
+    class Roles(models.TextChoices):
         ADMIN = 'admin'
+        COACH = 'coach'
+        USER = 'user'
 
     email = models.EmailField(
         max_length=254,
@@ -22,8 +25,15 @@ class User(AbstractUser):
         blank=True,
         null=True,
     )
+    gender = models.CharField(
+        max_length=6,
+        choices=Gender.choices,
+        default=None,
+        verbose_name='gender',
+        null=True,
+    )
     role = models.CharField(
-        max_length=9,
+        max_length=5,
         choices=Roles.choices,
         default=Roles.USER,
         verbose_name='role',

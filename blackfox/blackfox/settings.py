@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'django_cleanup.apps.CleanupConfig',
 
     'api',
+    'content',
     'fatsecret',
     'users',
     'training',
@@ -106,6 +107,13 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
     }
 }
+
+'''DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': '/Users/evgeniygolodnykh/Desktop/blackfox_backend/db.sqlite3',
+    }
+}'''
 
 
 # Password validation
@@ -224,8 +232,12 @@ DJOSER = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=5),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': False,
+    'ALGORITHM': 'HS256',
     'AUTH_HEADER_TYPES': ('Bearer',),
     'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.CustomLoginSerializer',
 }
@@ -238,7 +250,7 @@ CRONJOBS = [
 SPECTACULAR_SETTINGS = {
     'TITLE': 'BlackFox API',
     'DESCRIPTION': 'API documentation for BlackFox App',
-    'VERSION': '1.0.0',
+    'VERSION': '1.1.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
 }

@@ -1,18 +1,17 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from api.filters import UniversalUserFilter
-from api.permissions import IsAdmin, IsAdminOrCoach
-from api.serializers import (
+from api.filters import UniversalUserCoachFilter, UniversalUserFilter
+from api.permissions import IsAdminOrCoach
+from fatsecret.tools import get_fooddiary_objects
+from training.models import BodyStatsDiary, FoodDiary, Project
+from training.serializers import (
     BodyStatsDiarySerializer, CreateUpdateBodyStatsDiarySerializer,
     CreateUpdateProjectSerializer, FoodDiarySerializer, ProjectSerializer,
 )
-from fatsecret.tools import get_fooddiary_objects
-from training.models import BodyStatsDiary, FoodDiary, Project
 
 User = get_user_model()
 
@@ -23,10 +22,8 @@ project_not_exists_message = 'Please create a project for current user'
 
 
 class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
-    """A viewset for viewing and editing BodyStatsDiary instances."""
+    """ViewSet for viewing and editing BodyStatsDiary instances."""
 
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
     filterset_class = UniversalUserFilter
 
     def get_serializer_class(self):
@@ -50,11 +47,9 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
 
 
 class FoodDiaryViewSet(viewsets.ModelViewSet):
-    """A viewset for creating and viewing FoodDiary instances."""
+    """ViewSet for viewing and editing FoodDiary instances."""
 
-    permission_classes = [IsAuthenticated]
     serializer_class = FoodDiarySerializer
-    filter_backends = [DjangoFilterBackend]
     filterset_class = UniversalUserFilter
 
     def get_queryset(self):
@@ -95,17 +90,14 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    """A viewset for viewing and editing Project instances."""
+    """ViewSet for viewing and editing Project instances."""
 
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = UniversalUserFilter
+    filterset_class = UniversalUserCoachFilter
 
     def get_permissions(self):
-        if self.action == 'create':
-            return [IsAdmin()]
-        if self.action in ('partial_update', 'update'):
-            return [IsAdminOrCoach()]
-        return [IsAuthenticated()]
+        if self.action in ('list', 'retrieve'):
+            return [IsAuthenticated()]
+        return [IsAdminOrCoach()]
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update', 'update'):

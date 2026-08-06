@@ -47,9 +47,7 @@ class CreateUpdateBodyStatsDiarySerializer(serializers.ModelSerializer):
         return BodyStatsDiary.objects.create(**validated_data)
 
     def to_representation(self, instance):
-        request = self.context.get('request')
-        context = {'request': request}
-        return BodyStatsDiarySerializer(instance, context=context).data
+        return BodyStatsDiarySerializer(instance, context=self.context).data
 
 
 class FoodDiarySerializer(serializers.ModelSerializer):
@@ -103,6 +101,4 @@ class CreateUpdateProjectSerializer(ProjectSerializer):
         return user
 
     def to_representation(self, instance):
-        request = self.context.get('request')
-        context = {'request': request}
-        return ProjectSerializer(instance, context=context).data
+        return ProjectSerializer(instance, context=self.context).data
