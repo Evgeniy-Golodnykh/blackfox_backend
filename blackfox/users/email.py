@@ -32,3 +32,9 @@ class PasswordResetEmail(email.PasswordResetEmail):
     '''Override reset password email with template.'''
 
     template_name = 'email/password_reset.html'
+
+    def get_context_data(self):
+        context = super().get_context_data()
+        context['user_firstname'] = self.context.get('user').first_name
+        context['year'] = dt.now().year
+        return context
