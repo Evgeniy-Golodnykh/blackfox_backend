@@ -30,7 +30,6 @@ class User(AbstractUser):
         choices=Gender.choices,
         default=None,
         verbose_name='gender',
-        null=True,
     )
     role = models.CharField(
         max_length=5,
@@ -66,3 +65,22 @@ class User(AbstractUser):
     @property
     def is_coach(self):
         return self.role == self.Roles.COACH
+
+
+class CoachProfile(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='профиль тренера',
+        related_name='coach_profile'
+    )
+    specialization = models.JSONField(default=list, blank=True)
+    experience_years = models.PositiveIntegerField(default=0)
+    education = models.JSONField(default=list, blank=True)
+    bio = models.TextField(blank=True)
+    price = models.CharField(max_length=100, blank=True)
+    instagram = models.CharField(max_length=100, blank=True)
+    telegram = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return f'Профиль тренера: {self.user.get_full_name()}'
