@@ -21,7 +21,7 @@ class User(AbstractUser):
     )
     image = models.ImageField(
         upload_to='user_images/',
-        verbose_name='image',
+        verbose_name='изображение',
         blank=True,
         null=True,
     )
@@ -29,13 +29,13 @@ class User(AbstractUser):
         max_length=6,
         choices=Gender.choices,
         default=None,
-        verbose_name='gender',
+        verbose_name='пол',
     )
     role = models.CharField(
         max_length=5,
         choices=Roles.choices,
         default=Roles.USER,
-        verbose_name='role',
+        verbose_name='роль',
     )
     fatsecret_token = models.CharField(
         max_length=100,

@@ -32,9 +32,10 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
         return BodyStatsDiarySerializer
 
     def get_queryset(self):
+        queryset = BodyStatsDiary.objects.select_related('user')
         if self.request.user.is_admin or self.request.user.is_coach:
-            return BodyStatsDiary.objects.all()
-        return BodyStatsDiary.objects.filter(user=self.request.user)
+            return queryset
+        return queryset.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         if self.request.user.is_admin or self.request.user.is_coach:
@@ -53,9 +54,10 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
     filterset_class = UniversalUserFilter
 
     def get_queryset(self):
+        queryset = FoodDiary.objects.select_related('user')
         if self.request.user.is_admin or self.request.user.is_coach:
-            return FoodDiary.objects.all()
-        return FoodDiary.objects.filter(user=self.request.user)
+            return queryset
+        return queryset.filter(user=self.request.user)
 
     def create(self, request):
         if request.user.is_admin or request.user.is_coach:
@@ -105,8 +107,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return ProjectSerializer
 
     def get_queryset(self):
+        queryset = Project.objects.select_related('user', 'coach')
         if self.request.user.is_admin:
-            return Project.objects.all()
+            return queryset
         if self.request.user.is_coach:
-            return Project.objects.filter(coach=self.request.user)
-        return Project.objects.filter(user=self.request.user)
+            return queryset.filter(coach=self.request.user)
+        return queryset.filter(user=self.request.user)

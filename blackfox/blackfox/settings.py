@@ -56,6 +56,7 @@ INSTALLED_APPS = [
 
     'api',
     'content',
+    'cycles',
     'fatsecret',
     'users',
     'training',
