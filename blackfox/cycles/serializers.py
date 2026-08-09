@@ -5,9 +5,11 @@ from cycles.models import CycleSettings, PeriodEntry, PhaseOverride
 
 User = get_user_model()
 
+error_user = 'Only female users are allowed'
 error_cycle_length_days = 'Cycle length must be greater than 0'
 error_period_length_days = 'Period length must be greater than 0'
 error_length_days = 'Period length cannot be greater than cycle length'
+phase_exists_message = 'A cycle phase for this user and date already exists'
 
 
 class CycleSettingsSerializer(serializers.ModelSerializer):
@@ -25,6 +27,11 @@ class CycleSettingsSerializer(serializers.ModelSerializer):
             'cycle_length_days',
             'period_length_days',
         )
+
+    def validate_user(self, user):
+        if not user.is_female:
+            raise serializers.ValidationError(error_user)
+        return user
 
     def validate_cycle_length_days(self, value):
         if value < 1:
@@ -64,6 +71,11 @@ class PeriodEntrySerializer(serializers.ModelSerializer):
         model = PeriodEntry
         fields = '__all__'
 
+    def validate_user(self, user):
+        if not user.is_female:
+            raise serializers.ValidationError(error_user)
+        return user
+
 
 class PhaseOverrideSerializer(serializers.ModelSerializer):
     """Serializer for phase overrides."""
@@ -76,3 +88,15 @@ class PhaseOverrideSerializer(serializers.ModelSerializer):
     class Meta:
         model = PhaseOverride
         fields = '__all__'
+
+    def validate_user(self, user):
+        if not user.is_female:
+            raise serializers.ValidationError(error_user)
+        return user
+
+    def validate(self, attrs):
+        user = attrs.get('user')
+        date = attrs.get('date')
+        if PhaseOverride.objects.filter(user=user, date=date).exists():
+            raise serializers.ValidationError(phase_exists_message)
+        return attrs

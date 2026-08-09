@@ -66,6 +66,10 @@ class User(AbstractUser):
     def is_coach(self):
         return self.role == self.Roles.COACH
 
+    @property
+    def is_female(self):
+        return self.gender == self.Gender.FEMALE
+
 
 class CoachProfile(models.Model):
     user = models.OneToOneField(
