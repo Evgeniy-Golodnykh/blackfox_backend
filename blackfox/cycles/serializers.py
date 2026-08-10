@@ -94,9 +94,9 @@ class PhaseOverrideSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(error_user)
         return user
 
-    def validate(self, attrs):
-        user = attrs.get('user')
-        date = attrs.get('date')
+    def create(self, validated_data):
+        user = validated_data.get('user')
+        date = validated_data.get('date')
         if PhaseOverride.objects.filter(user=user, date=date).exists():
             raise serializers.ValidationError(phase_exists_message)
-        return attrs
+        return PhaseOverride.objects.create(**validated_data)
