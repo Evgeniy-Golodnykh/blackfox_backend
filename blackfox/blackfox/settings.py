@@ -56,6 +56,7 @@ INSTALLED_APPS = [
 
     'api',
     'content',
+    'cycles',
     'fatsecret',
     'users',
     'training',
@@ -85,7 +86,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'users.email.email_context_processor',
             ],
         },
     },
@@ -107,13 +107,6 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
     }
 }
-
-'''DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/Users/evgeniygolodnykh/Desktop/blackfox_backend/db.sqlite3',
-    }
-}'''
 
 
 # Password validation

@@ -1,14 +1,20 @@
-from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from djoser.compat import get_user_email_field_name
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from users.mixins import UserValidationMixin
-
-User = get_user_model()
+from users.models import CoachProfile, User
 
 error_match_password_message = 'Password confirmation does not match'
+
+
+class CoachProfileSerializer(serializers.ModelSerializer):
+    """A serializer to read CoachProfile instances."""
+
+    class Meta:
+        model = CoachProfile
+        exclude = ('user',)
 
 
 class CustomLoginSerializer(TokenObtainPairSerializer):
@@ -29,6 +35,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(read_only=True)
     coach = serializers.SerializerMethodField(read_only=True)
     fatsecret_account = serializers.SerializerMethodField(read_only=True)
+    coach_profile = CoachProfileSerializer(read_only=True)
 
     class Meta:
         model = User
@@ -43,6 +50,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'role',
             'coach',
             'fatsecret_account',
+            'coach_profile',
         )
 
     def get_coach(self, obj):
@@ -105,6 +113,8 @@ class CustomUserUpdateSerializer(
 ):
     """A serializer to update User instances."""
 
+    coach_profile = CoachProfileSerializer(required=False)
+
     class Meta:
         model = User
         fields = (
@@ -114,14 +124,21 @@ class CustomUserUpdateSerializer(
             'last_name',
             'gender',
             'image',
+            'coach_profile',
         )
 
     def update(self, instance, validated_data):
         email_field = get_user_email_field_name(User)
         instance.email_changed = False
+        coach_profile_data = validated_data.pop('coach_profile', None)
         if email_field in validated_data:
             instance.is_active = False
             instance.email_changed = True
+        if coach_profile_data and instance.is_coach:
+            coach_profile, _ = CoachProfile.objects.update_or_create(
+                user=instance,
+                defaults=coach_profile_data,
+            )
         return super().update(instance, validated_data)
 
     def to_representation(self, instance):

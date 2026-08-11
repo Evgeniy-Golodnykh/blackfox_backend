@@ -14,6 +14,12 @@ class CustomUserViewSet(UserViewSet):
 
     filterset_class = UniversalUserCoachFilter
 
+    def get_queryset(self):
+        return User.objects.select_related(
+            'project_user__coach',
+            'coach_profile',
+        )
+
     def perform_destroy(self, instance):
         if instance.role == User.Roles.ADMIN:
             raise ValidationError(admin_delete_message)

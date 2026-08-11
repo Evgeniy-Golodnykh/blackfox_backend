@@ -27,5 +27,6 @@ urlpatterns = [
     path('login/', TokenObtainPairView.as_view(), name='login'),
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('fatsecret/', include('fatsecret.urls')),
+    path('cycle/', include('cycles.urls')),
     path('', include(router.urls)),
 ]
