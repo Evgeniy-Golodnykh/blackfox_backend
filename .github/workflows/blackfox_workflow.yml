@@ -27,6 +27,7 @@ jobs:
         python -m flake8
   
   build_and_push_to_docker_hub:
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     needs: tests
 
@@ -62,16 +63,13 @@ jobs:
       with:
         host: ${{ secrets.HOST_IP }}
         username: ${{ secrets.HOST_USERNAME }}
-        key: ${{ secrets.SSH_KEY }}
-        passphrase: ${{ secrets.SSH_PASSPHRASE }}
+        password: ${{ secrets.HOST_PASSWORD }}
+        port: ${{ secrets.HOST_SSH_PORT }}
         script: |
-            sudo docker-compose stop
-            sudo docker-compose rm -f backend
-            sudo docker-compose rm -f frontend
-            sudo docker-compose rm -f nginx
-            sudo docker image rm -f ${{ secrets.DOCKER_USERNAME }}/blackfox:latest
-            sudo docker image rm -f ${{ secrets.FRONTEND_DOCKER_USERNAME }}/nutrition-app:latest
-            sudo docker volume rm -f root_frontend_build
+            sudo docker compose down
+            sudo docker image rm ${{ secrets.DOCKER_USERNAME }}/blackfox:latest
+            sudo docker image rm ${{ secrets.FRONTEND_DOCKER_USERNAME }}/app-bfn-web:latest
+            sudo docker volume rm root_frontend_build
             echo ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }} > .env
             echo DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} >> .env
             echo EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }} >> .env
@@ -85,5 +83,5 @@ jobs:
             echo FATSECRET_CONSUMER_KEY=${{ secrets.FATSECRET_CONSUMER_KEY }} >> .env
             echo FATSECRET_CONSUMER_SECRET=${{ secrets.FATSECRET_CONSUMER_SECRET }} >> .env
             echo FATSECRET_CALLBACK_URL=${{ secrets.FATSECRET_CALLBACK_URL }} >> .env
-            sudo docker-compose pull
-            sudo docker-compose up -d
+            sudo docker compose pull
+            sudo docker compose up -d
