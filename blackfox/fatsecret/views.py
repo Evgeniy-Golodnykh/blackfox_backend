@@ -1,15 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from fatsecret.tools import (
-    BLACKFOX_URL, CALLBACK_URL, PARAMS_FOOD_DAILY, PARAMS_FOOD_MONTHLY,
-    PARAMS_WEIGHT, fatsecret, get_weekly_food_nutrients, unix_date_converter,
+    CALLBACK_URL, PARAMS_FOOD_DAILY, PARAMS_FOOD_MONTHLY, PARAMS_WEIGHT,
+    fatsecret, get_weekly_food_nutrients, unix_date_converter,
 )
+from users.serializers import CustomUserSerializer
 
 User = get_user_model()
 
@@ -36,8 +36,6 @@ class RequestTokenView(APIView):
 class AccessTokenView(APIView):
     """A view to access FatSecret token."""
 
-    permission_classes = [AllowAny]
-
     def get(self, request):
         verifier = request.query_params.get('oauth_verifier')
         request_token = request.query_params.get('oauth_token')
@@ -56,7 +54,10 @@ class AccessTokenView(APIView):
         user.save()
         session.close()
         cache.delete(request_token)
-        return redirect(BLACKFOX_URL)
+        return Response(
+            CustomUserSerializer(user).data,
+            status=status.HTTP_200_OK,
+        )
 
 
 class FatsecretDataView(APIView):
