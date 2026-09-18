@@ -3,9 +3,11 @@ import logging
 import time
 
 from django.contrib.auth import get_user_model
+from django.db.models import Max
+from django.db.models.functions import Coalesce
 
 from fatsecret.tools import get_fooddiary_objects
-from training.models import FoodDiary
+from training.models import FoodDiary, Project
 
 DATETIME_FORMAT = '%d.%m.%Y %H:%M:%S'
 LOGFORMAT = '%(asctime)s [%(levelname)s] %(filename)s/%(funcName)s %(message)s'
@@ -24,7 +26,8 @@ fooddiary_autoupdate_error_message = (
 fooddiary_autoupdate_successful_message = (
     'Fatsecret data for user "{user}" successfully updated'
 )
-delete_inactive_user_message = 'Inactive {role} "{user}" has been deleted'
+delete_inactive_project_message = 'Inactive project for user "{user}" deleted'
+delete_inactive_user_message = 'Inactive {role} "{user}" deleted'
 
 
 def fooddiary_autoupdate():
@@ -49,6 +52,21 @@ def fooddiary_autoupdate():
             ))
 
 
+def delete_inactive_projects():
+    """A function for Cron to delete inactive projects."""
+
+    inactive_projects = Project.objects.annotate(
+        last_activity=Coalesce(Max('user__food_diary__date'), 'start_date')
+    ).filter(
+        last_activity__lt=dt.date.today() - dt.timedelta(days=90)
+    ).select_related('user')
+    for project in inactive_projects:
+        logging.warning(
+            delete_inactive_project_message.format(user=project.user.username)
+        )
+    inactive_projects.delete()
+
+
 def delete_inactive_users():
     """A function for Cron to delete inactive users."""
 
@@ -56,8 +74,6 @@ def delete_inactive_users():
         is_active=False,
         date_joined__date__lt=dt.date.today() - dt.timedelta(days=2)
     )
-    if not inactive_users.exists():
-        return
     for user in inactive_users:
         logging.warning(delete_inactive_user_message.format(
             role=user.role, user=user.username
