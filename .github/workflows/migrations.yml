@@ -1,13 +1,22 @@
 name: run migrations
 
-# Runs only when started by hand: Actions → "run migrations" → Run workflow,
-# branch nf-release. Deploys never migrate on their own.
+# Never runs on its own — deploys don't migrate. Two ways to start it:
 #
-# Without "apply" it only prints the plan — what would be applied.
-# With "apply" it backs up the database first (unless unticked), and stops
-# without migrating if the backup fails.
+# 1. A tag (no server access needed):
+#      git tag migrate-plan-1  && git push origin migrate-plan-1   → plan only
+#      git tag migrate-apply-1 && git push origin migrate-apply-1  → apply
+# 2. Actions → "run migrations" → Run workflow on nf-release. This button
+#    only shows once this file is also on the default branch (develop).
+#
+# Applying always backs up the database first (unless unticked in the
+# button) and stops without migrating if the backup fails. After applying,
+# it points the Telegram bot at the webhook.
 
 on:
+  push:
+    tags:
+      - 'migrate-plan-*'
+      - 'migrate-apply-*'
   workflow_dispatch:
     inputs:
       apply:
@@ -26,15 +35,17 @@ concurrency:
 
 jobs:
   migrate:
-    if: github.ref_name == 'nf-release'
+    if: >-
+      github.ref_name == 'nf-release'
+      || startsWith(github.ref, 'refs/tags/migrate-')
     runs-on: ubuntu-latest
 
     steps:
-    - name: plan, back up and migrate over ssh
+    - name: plan, back up, migrate and set the webhook over ssh
       uses: appleboy/ssh-action@v1.2.0
       env:
-        APPLY: ${{ inputs.apply }}
-        BACKUP: ${{ inputs.backup }}
+        APPLY: ${{ startsWith(github.ref, 'refs/tags/migrate-apply-') || inputs.apply }}
+        BACKUP: ${{ github.event_name == 'push' || inputs.backup }}
       with:
         host: ${{ secrets.HOST_IP }}
         username: ${{ secrets.HOST_USERNAME }}
@@ -43,6 +54,9 @@ jobs:
         envs: APPLY,BACKUP
         script: |
           set -e
+
+          echo "== Services =="
+          sudo docker compose ps
 
           echo "== Migrations to apply =="
           sudo docker compose exec -T backend python manage.py migrate --plan
@@ -56,11 +70,18 @@ jobs:
             mkdir -p ~/db_backups
             FILE=~/db_backups/blackfox_$(date +%Y%m%d_%H%M%S).dump
             echo "== Backing up the database to $FILE =="
-            # pg_dump from the official image, with the same connection
-            # settings the backend uses (the .env written by the deploy).
-            sudo docker run --rm --network host --env-file .env postgres:17 \
-              sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' \
-              > "$FILE"
+            DB_SERVICE=$(sudo docker compose ps --services | grep -xE 'db|postgres|database' | head -n 1 || true)
+            if [ -n "$DB_SERVICE" ]; then
+              # The database runs in this compose project: dump inside it.
+              sudo docker compose exec -T "$DB_SERVICE" \
+                sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > "$FILE"
+            else
+              # A database outside compose: the same connection settings
+              # the backend uses (the .env written by the deploy).
+              sudo docker run --rm --network host --env-file .env postgres:17 \
+                sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' \
+                > "$FILE"
+            fi
             test -s "$FILE"
             ls -lh "$FILE"
           fi
@@ -69,4 +90,8 @@ jobs:
           sudo docker compose exec -T backend python manage.py migrate --noinput
 
           echo "== State after =="
-          sudo docker compose exec -T backend python manage.py showmigrations
+          sudo docker compose exec -T backend python manage.py showmigrations questionnaire tgbot
+
+          echo "== Telegram webhook =="
+          sudo docker compose exec -T backend python manage.py set_telegram_webhook \
+            || echo "Webhook not set — see the error above; migrations are applied."
