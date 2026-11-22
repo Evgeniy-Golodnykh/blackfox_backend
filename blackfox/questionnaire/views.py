@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
@@ -11,11 +12,12 @@ from questionnaire.serializers import (
     ClaimSerializer, MyQuestionnaireSerializer, QuestionnaireCreateSerializer,
     QuestionnaireSerializer,
 )
-from questionnaire.tokens import hash_claim_token
+from questionnaire.tokens import hash_claim_token, new_claim_token
 
 invalid_claim_token_message = 'Ссылка на анкету недействительна.'
 not_a_client_message = 'Привязать анкету может только клиент.'
 no_questionnaire_message = 'Анкеты нет.'
+already_linked_message = 'Анкета уже привязана к аккаунту.'
 
 
 class QuestionnaireViewSet(
@@ -89,6 +91,29 @@ class QuestionnaireViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response({'id': questionnaire.pk})
+
+    @action(detail=True, methods=['post'])
+    def invite(self, request, pk=None):
+        """Admin: a one-time sign-up link for the person who sent this
+        application. Signing up (or logging in) through it links the
+        application to their account, as if they had done it on their own
+        device right after sending it. Each call makes a new link; the
+        previous one stops working."""
+
+        questionnaire = self.get_object()
+        if questionnaire.user_id is not None:
+            return Response({'detail': already_linked_message},
+                            status=status.HTTP_400_BAD_REQUEST)
+        token, token_hash, expires_at = new_claim_token()
+        questionnaire.claim_token_hash = token_hash
+        questionnaire.claim_token_expires_at = expires_at
+        questionnaire.save(update_fields=['claim_token_hash',
+                                          'claim_token_expires_at'])
+        base = settings.APP_BASE_URL.rstrip('/')
+        return Response({
+            'url': f'{base}/signup?from=invite&claim={token}',
+            'expires_at': expires_at.isoformat(),
+        })
 
     @action(detail=False, methods=['get'])
     def mine(self, request):

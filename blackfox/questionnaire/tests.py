@@ -340,3 +340,47 @@ class NotificationTests(QuestionnaireTestCase):
         self.assertEqual(response.status_code, 201)
         post.assert_called_once()
         self.assertNotIn('Гастрит', post.call_args.kwargs['json']['text'])
+
+
+class InviteTests(QuestionnaireTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.questionnaire = Questionnaire.objects.create(
+            version=2, answers=ANSWERS, consent_at=timezone.now(),
+        )
+        self.url = f'{URL}{self.questionnaire.pk}/invite/'
+
+    def test_admin_gets_a_link_that_claims_the_application(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        link = response.json()['url']
+        self.assertIn('/signup?from=invite&claim=', link)
+        token = link.split('claim=')[1]
+
+        self.client.force_authenticate(self.client_user)
+        claimed = self.client.post(CLAIM_URL, {'claim_token': token},
+                                   format='json')
+        self.assertEqual(claimed.status_code, 200)
+        self.questionnaire.refresh_from_db()
+        self.assertEqual(self.questionnaire.user, self.client_user)
+
+    def test_a_new_invite_replaces_the_old_one(self):
+        self.client.force_authenticate(self.admin)
+        first = self.client.post(self.url).json()['url'].split('claim=')[1]
+        self.client.post(self.url)
+        self.client.force_authenticate(self.client_user)
+        response = self.client.post(CLAIM_URL, {'claim_token': first},
+                                    format='json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_only_admin_and_not_when_linked(self):
+        for user in (self.client_user, self.coach):
+            self.client.force_authenticate(user)
+            self.assertEqual(self.client.post(self.url).status_code, 403)
+        Questionnaire.objects.filter(pk=self.questionnaire.pk).update(
+            user=self.client_user)
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(self.client.post(self.url).status_code, 400)
