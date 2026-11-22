@@ -203,6 +203,10 @@ REST_FRAMEWORK = {
     # Only views that set throttle_classes use these: the public
     # questionnaire submit. Behind a proxy it needs the client's IP in
     # X-Forwarded-For, or everyone shares one limit.
+    # Exactly one proxy (the compose nginx) sits in front: the client's IP
+    # is the last X-Forwarded-For entry, the one nginx added — not the
+    # first, which a visitor could fake to dodge the throttle.
+    'NUM_PROXIES': int(os.getenv('NUM_PROXIES', '1')),
     'DEFAULT_THROTTLE_RATES': {
         'questionnaire': os.getenv('QUESTIONNAIRE_THROTTLE_RATE', '5/hour'),
         'telegram_test': '10/hour',

@@ -1,0 +1,58 @@
+name: apply nginx config
+
+# Puts infra/nginx/default.conf on the server as the nginx config and
+# reloads nginx — only if `nginx -t` accepts it; otherwise the previous
+# file is restored. Started by a tag: nginx-apply-<n>. A copy of the
+# previous config stays next to it (default.conf.bak-<date>).
+
+on:
+  push:
+    tags:
+      - 'nginx-apply-*'
+
+concurrency:
+  group: production-server
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: encode the config
+      id: conf
+      run: echo "b64=$(base64 -w0 infra/nginx/default.conf)" >> "$GITHUB_OUTPUT"
+
+    - name: apply over ssh
+      uses: appleboy/ssh-action@v1.2.0
+      env:
+        CONF_B64: ${{ steps.conf.outputs.b64 }}
+      with:
+        host: ${{ secrets.HOST_IP }}
+        username: ${{ secrets.HOST_USERNAME }}
+        password: ${{ secrets.HOST_PASSWORD }}
+        port: ${{ secrets.HOST_SSH_PORT }}
+        envs: CONF_B64
+        script: |
+          set -e
+          NGINX=$(sudo docker compose ps -q nginx)
+          SRC=$(sudo docker inspect "$NGINX" --format '{{range .Mounts}}{{if eq .Destination "/etc/nginx/conf.d/default.conf"}}{{.Source}}{{end}}{{end}}')
+          if [ -z "$SRC" ]; then
+            echo "default.conf isn't mounted from a file on the host — nothing changed"
+            exit 1
+          fi
+          BACKUP="$SRC.bak-$(date +%Y%m%d_%H%M%S)"
+          sudo cp "$SRC" "$BACKUP"
+          echo "previous config saved to $BACKUP"
+          # tee writes into the same file (same inode), so the bind mount
+          # inside the container sees the new content.
+          echo "$CONF_B64" | base64 -d | sudo tee "$SRC" > /dev/null
+          if sudo docker compose exec -T nginx nginx -t; then
+            sudo docker compose exec -T nginx nginx -s reload
+            echo "applied and reloaded"
+          else
+            sudo cat "$BACKUP" | sudo tee "$SRC" > /dev/null
+            echo "nginx -t rejected the new config — previous one restored"
+            exit 1
+          fi

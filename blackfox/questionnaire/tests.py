@@ -118,6 +118,20 @@ class SubmitTests(QuestionnaireTestCase):
             self.assertEqual(self.submit().status_code, 201)
         self.assertEqual(self.submit().status_code, 429)
 
+    def test_faked_forwarded_for_does_not_dodge_the_throttle(self):
+        # nginx appends the real address last; a visitor can only prepend.
+        for i in range(5):
+            response = self.client.post(
+                URL, {'version': 2, 'answers': ANSWERS, 'consent': True},
+                format='json', HTTP_X_FORWARDED_FOR=f'10.0.0.{i}, 203.0.113.7',
+            )
+            self.assertEqual(response.status_code, 201)
+        response = self.client.post(
+            URL, {'version': 2, 'answers': ANSWERS, 'consent': True},
+            format='json', HTTP_X_FORWARDED_FOR='10.0.0.99, 203.0.113.7',
+        )
+        self.assertEqual(response.status_code, 429)
+
     def test_admin_reads_are_not_throttled(self):
         for _ in range(5):
             self.submit()
