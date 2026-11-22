@@ -1,0 +1,51 @@
+name: nginx config probe
+
+# One-off: sends the server's nginx config as a file to one user's own
+# Telegram chat with the bot (this repo's logs are public). Tag:
+#   probe-nginx-<username>-<n>
+
+on:
+  push:
+    tags:
+      - 'probe-nginx-*'
+
+concurrency:
+  group: production-server
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+    - name: probe over ssh
+      uses: appleboy/ssh-action@v1.2.0
+      env:
+        TAG: ${{ github.ref_name }}
+      with:
+        host: ${{ secrets.HOST_IP }}
+        username: ${{ secrets.HOST_USERNAME }}
+        password: ${{ secrets.HOST_PASSWORD }}
+        port: ${{ secrets.HOST_SSH_PORT }}
+        envs: TAG
+        script: |
+          set -e
+          PROBE_USER=$(echo "$TAG" | sed -E 's/^probe-nginx-//; s/-[0-9]+$//')
+          CONF_B64=$(sudo docker compose exec -T nginx sh -c 'echo "### nginx -T"; nginx -T 2>&1' | base64 -w0)
+          echo "probe: config is $(echo "$CONF_B64" | base64 -d | wc -l) lines"
+          sudo docker compose exec -T -e PROBE_USER="$PROBE_USER" -e CONF_B64="$CONF_B64" backend python manage.py shell <<'PY'
+          import base64, os, requests
+          from django.conf import settings
+          from django.contrib.auth import get_user_model
+          from tgbot.models import TelegramAccount
+
+          users = list(get_user_model().objects.filter(username__iexact=os.environ['PROBE_USER']))
+          account = TelegramAccount.objects.filter(user__in=users).first() if len(users) == 1 else None
+          if account is None:
+              print('probe: no linked Telegram for that user — nothing sent')
+              raise SystemExit
+          conf = base64.b64decode(os.environ['CONF_B64'])
+          r = requests.post(f'https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendDocument',
+                            data={'chat_id': account.telegram_id, 'caption': 'nginx config (nginx -T)'},
+                            files={'document': ('nginx.conf.txt', conf, 'text/plain')}, timeout=30)
+          print('probe: sent' if r.ok else f'probe: Telegram HTTP {r.status_code}')
+          PY
