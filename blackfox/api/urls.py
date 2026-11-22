@@ -32,5 +32,6 @@ urlpatterns = [
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('fatsecret/', include('fatsecret.urls')),
     path('cycle/', include('cycles.urls')),
+    path('', include('tgbot.urls')),
     path('', include(router.urls)),
 ]

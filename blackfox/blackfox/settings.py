@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'cycles',
     'fatsecret',
     'questionnaire',
+    'tgbot',
     'users',
     'training',
 ]
@@ -264,3 +265,16 @@ TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_NOTIFY_CHAT_ID = os.getenv('TELEGRAM_NOTIFY_CHAT_ID', '')
 
 APP_BASE_URL = os.getenv('APP_BASE_URL', 'https://www.blackfoxnutrition.ru')
+
+# The bot (tgbot/): Mini App sign-in, linking, webhook.
+
+TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', 'bfnutrition_bot')
+
+# Random string Telegram sends back with every webhook call; set it, then
+# run `python manage.py set_telegram_webhook` once.
+TELEGRAM_WEBHOOK_SECRET = os.getenv('TELEGRAM_WEBHOOK_SECRET', '')
+
+TELEGRAM_WEBHOOK_URL = os.getenv(
+    'TELEGRAM_WEBHOOK_URL',
+    'https://www.blackfoxnutrition.ru/api/telegram/webhook/',
+)
