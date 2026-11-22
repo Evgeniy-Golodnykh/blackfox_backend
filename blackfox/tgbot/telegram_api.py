@@ -65,8 +65,9 @@ def send_with_retry(token, payload, photo=None):
     return result_of(response, payload['chat_id'])
 
 
-def send_message(chat_id, text, button=None):
-    """Send a plain-text message; button = (text, app path) or None.
+def send_message(chat_id, text, button=None, markup=None):
+    """Send a plain-text message; button = (text, app path), or a ready
+    reply markup.
 
     Never logs the text — it can contain health data."""
 
@@ -75,7 +76,9 @@ def send_message(chat_id, text, button=None):
         return FAILED
     payload = {'chat_id': chat_id, 'text': text,
                'disable_web_page_preview': True}
-    if button:
+    if markup:
+        payload['reply_markup'] = markup
+    elif button:
         payload['reply_markup'] = web_app_button(*button)
     return send_with_retry(token, payload)
 

@@ -23,7 +23,8 @@ class Command(BaseCommand):
             method, payload = 'setWebhook', {
                 'url': settings.TELEGRAM_WEBHOOK_URL,
                 'secret_token': settings.TELEGRAM_WEBHOOK_SECRET,
-                'allowed_updates': ['message', 'my_chat_member'],
+                'allowed_updates': ['message', 'my_chat_member',
+                                    'callback_query'],
             }
         try:
             response = requests.post(API.format(token=token, method=method),

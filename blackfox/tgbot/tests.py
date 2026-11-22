@@ -248,9 +248,10 @@ class WebhookTests(APITestCase):
         self.assertEqual(body['method'], 'sendMessage')
         self.assertEqual(body['chat_id'], TG_ID)
         self.assertIn('Анна', body['text'])
-        button = body['reply_markup']['inline_keyboard'][0][0]
-        self.assertEqual(button['web_app']['url'],
-                         'https://app.example.test/stats')
+        urls = [b['web_app']['url']
+                for row in body['reply_markup']['inline_keyboard']
+                for b in row if 'web_app' in b]
+        self.assertIn('https://app.example.test/stats', urls)
 
     def test_code_works_once(self):
         code = self.link_code()
@@ -372,8 +373,10 @@ class BotCommandTests(APITestCase):
     def test_stop_and_start(self):
         self.assertIn('выключены', self.command('/stop').json()['text'])
         self.assertEqual(self.flags(), [False] * 4)
-        self.assertIn('включены', self.command('/start').json()['text'])
-        self.assertEqual(self.flags(), [True] * 4)
+        # No plan yet: /start explains instead of switching reports on.
+        self.assertIn('тренер составит',
+                      self.command('/start').json()['text'])
+        self.assertEqual(self.flags(), [False] * 4)
 
     def test_blocking_switches_everything_off(self):
         self.client.post(WEBHOOK_URL, {'update_id': 2, 'my_chat_member': {
@@ -385,4 +388,5 @@ class BotCommandTests(APITestCase):
 
     def test_stop_when_not_linked(self):
         TelegramAccount.objects.all().delete()
-        self.assertIn('не привязан', self.command('/stop').json()['text'])
+        self.assertIn('Black Fox Nutrition',
+                      self.command('/stop').json()['text'])

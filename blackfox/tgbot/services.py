@@ -1,6 +1,7 @@
 from django.db import IntegrityError, transaction
 
 from tgbot.models import TelegramAccount
+from tgbot.onboarding import start_switched_off
 
 
 class TelegramTakenError(Exception):
@@ -8,7 +9,8 @@ class TelegramTakenError(Exception):
 
 
 def link_telegram(user, telegram_id, username=''):
-    """Link (or re-link) the user's Telegram account.
+    """Link (or re-link) the user's Telegram account. Returns (account,
+    first_time) — first_time when this user had no Telegram linked before.
 
     One Telegram account per user and one user per Telegram account: a
     user who links a new one replaces the old link; a Telegram account
@@ -22,6 +24,7 @@ def link_telegram(user, telegram_id, username=''):
         ).exclude(user=user).exists()
         if taken:
             raise TelegramTakenError
+        first_time = not TelegramAccount.objects.filter(user=user).exists()
         try:
             account, _ = TelegramAccount.objects.update_or_create(
                 user=user,
@@ -33,4 +36,6 @@ def link_telegram(user, telegram_id, username=''):
             )
         except IntegrityError:  # linked elsewhere at the same moment
             raise TelegramTakenError
-    return account
+        if first_time:
+            start_switched_off(user)
+    return account, first_time

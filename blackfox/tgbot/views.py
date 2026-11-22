@@ -14,10 +14,11 @@ from tgbot.init_data import validate_init_data
 from tgbot.link_codes import (
     LIFETIME_SECONDS, check_link_code, make_link_code, parse_link_code,
 )
+from tgbot import onboarding
 from tgbot.models import NotificationSettings, TelegramAccount
 from tgbot.scheduler import send_now
 from tgbot.serializers import NotificationSettingsSerializer
-from tgbot.telegram_api import SENT
+from tgbot.telegram_api import SENT, send_message
 from tgbot.services import TelegramTakenError, link_telegram
 from users.serializers import CustomUserSerializer
 
@@ -91,13 +92,15 @@ class MyTelegramView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            link_telegram(request.user, tg_user['id'],
-                          tg_user.get('username', ''))
+            _, first_time = link_telegram(request.user, tg_user['id'],
+                                          tg_user.get('username', ''))
         except TelegramTakenError:
             return Response(
                 {'detail': linked_elsewhere_message},
                 status=status.HTTP_409_CONFLICT,
             )
+        if first_time:
+            onboarding.send_later(request.user, onboarding.linked)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def delete(self, request):
@@ -195,15 +198,20 @@ def open_app_button(text, path='/stats'):
     return {'inline_keyboard': [[{'text': text, 'web_app': {'url': url}}]]}
 
 
-def reply(chat_id, text, path='/stats', button='Открыть BFN'):
+def reply(chat_id, text, path='/stats', button='Открыть BFN', markup=None):
     """Answer within the webhook response — no extra call to Telegram."""
 
     return Response({
         'method': 'sendMessage',
         'chat_id': chat_id,
         'text': text,
-        'reply_markup': open_app_button(button, path),
+        'reply_markup': markup or open_app_button(button, path),
     })
+
+
+def reply_with(chat_id, message):
+    text, markup = message
+    return reply(chat_id, text, markup=markup)
 
 
 class TelegramWebhookView(APIView):
@@ -227,10 +235,30 @@ class TelegramWebhookView(APIView):
         if 'my_chat_member' in update:
             self.chat_member(update['my_chat_member'])
             return Response({})
+        if isinstance(update.get('callback_query'), dict):
+            return self.callback(update['callback_query'])
         message = update.get('message')
         if isinstance(message, dict):
             return self.message(message) or Response({})
         return Response({})
+
+    def callback(self, query):
+        """A tap on an inline button — only «Включить отчёты» for now."""
+
+        sender = query.get('from') or {}
+        answer = {'method': 'answerCallbackQuery',
+                  'callback_query_id': str(query.get('id', ''))}
+        account = TelegramAccount.objects.select_related('user').filter(
+            telegram_id=sender.get('id'),
+        ).first()
+        if query.get('data') != onboarding.ENABLE_REPORTS or account is None:
+            answer['text'] = not_linked_message if account is None else ''
+            return Response(answer)
+        onboarding.set_reports(account.user, True)
+        text, markup = onboarding.reports_enabled()
+        send_message(account.telegram_id, text, markup=markup)
+        answer['text'] = 'Отчёты включены'
+        return Response(answer)
 
     def chat_member(self, change):
         """Blocked the bot → stop writing; unblocked → may write again."""
@@ -263,40 +291,37 @@ class TelegramWebhookView(APIView):
 
         command, _, argument = text.strip().partition(' ')
         command = command.split('@')[0]
-        if command == '/stop':
-            if set_all_notifications(telegram_id, False):
-                return reply(
-                    chat['id'],
-                    'Готово, отчёты и напоминания выключены. Включить снова '
-                    '— /start или в настройках приложения.',
-                    path='/settings', button='Настройки',
-                )
-            return reply(chat['id'], not_linked_message, path='/login',
-                         button='Открыть и войти')
-        if command != '/start':
-            return reply(
-                chat['id'],
-                'Это бот Black Fox Nutrition: здесь будут отчёты и '
-                'напоминания. Всё остальное — в приложении.',
-            )
-        if argument.strip():
+        account = TelegramAccount.objects.select_related('user').filter(
+            telegram_id=telegram_id,
+        ).first()
+
+        if command == '/start' and argument.strip():
             return self.link_by_code(chat['id'], telegram_id,
                                      sender.get('username', ''),
                                      argument.strip())
+        if account is None:
+            if command in ('/start', '/stop'):
+                return reply_with(chat['id'], onboarding.welcome())
+            return reply_with(chat['id'], onboarding.help_text())
 
-        linked = TelegramAccount.objects.filter(telegram_id=telegram_id)
-        if linked.update(can_write=True):
-            set_all_notifications(telegram_id, True)
-            return reply(chat['id'], 'Вы снова на связи: отчёты и '
-                                     'напоминания включены. Настроить — в '
-                                     'приложении.', path='/settings',
-                         button='Настройки')
-        return reply(
-            chat['id'],
-            'Привет! Это бот Black Fox Nutrition. Откройте приложение и '
-            'войдите — Telegram подключится к аккаунту сам.',
-            path='/login', button='Открыть и войти',
-        )
+        user = account.user
+        if command == '/stop':
+            set_all_notifications(telegram_id, False)
+            return reply(
+                chat['id'],
+                'Готово, отчёты и напоминания выключены. Включить снова '
+                '— /start или в настройках приложения.',
+                path='/settings', button='Настройки',
+            )
+        if command == '/start':
+            if not account.can_write:
+                account.can_write = True
+                account.save(update_fields=['can_write'])
+            if onboarding.has_project(user):
+                onboarding.set_reports(user, True)
+                return reply_with(chat['id'], onboarding.reports_enabled())
+            return reply_with(chat['id'], onboarding.linked(user))
+        return reply_with(chat['id'], onboarding.help_text(user))
 
     def link_by_code(self, chat_id, telegram_id, username, code):
         parsed = parse_link_code(code)
@@ -315,10 +340,4 @@ class TelegramWebhookView(APIView):
         except TelegramTakenError:
             return reply(chat_id, linked_elsewhere_message, path='/settings',
                          button='Открыть настройки')
-        name = user.first_name or user.username
-        return reply(
-            chat_id,
-            f'Готово, {name}! Telegram подключён к аккаунту BFN. Сюда будут '
-            'приходить отчёты и напоминания — их можно настроить в '
-            'приложении.',
-        )
+        return reply_with(chat_id, onboarding.linked(user))
