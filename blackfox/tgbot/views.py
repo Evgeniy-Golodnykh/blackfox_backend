@@ -13,7 +13,8 @@ from tgbot.init_data import validate_init_data
 from tgbot.link_codes import (
     LIFETIME_SECONDS, check_link_code, make_link_code, parse_link_code,
 )
-from tgbot.models import TelegramAccount
+from tgbot.models import NotificationSettings, TelegramAccount
+from tgbot.serializers import NotificationSettingsSerializer
 from tgbot.services import TelegramTakenError, link_telegram
 from users.serializers import CustomUserSerializer
 
@@ -101,6 +102,42 @@ class MyTelegramView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class MyNotificationsView(APIView):
+    """GET/PATCH /api/users/me/notifications/ — what the bot sends."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self):
+        settings_row, _ = NotificationSettings.objects.get_or_create(
+            user=self.request.user,
+        )
+        return settings_row
+
+    def get(self, request):
+        return Response(NotificationSettingsSerializer(self.get_object()).data)
+
+    def patch(self, request):
+        serializer = NotificationSettingsSerializer(
+            self.get_object(), data=request.data, partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+def set_all_notifications(telegram_id, enabled):
+    """/start and /stop in the bot: every kind on or off at once."""
+
+    account = TelegramAccount.objects.filter(telegram_id=telegram_id).first()
+    if account is None:
+        return False
+    NotificationSettings.objects.update_or_create(
+        user_id=account.user_id,
+        defaults={flag: enabled for flag in NotificationSettings.FLAGS},
+    )
+    return True
+
+
 class TelegramLinkCodeView(APIView):
     """POST /api/users/me/telegram/link/ — a t.me link that links this
     account when opened in Telegram (for the browser and the apps)."""
@@ -175,6 +212,10 @@ class TelegramWebhookView(APIView):
             TelegramAccount.objects.filter(telegram_id=chat_id).update(
                 can_write=new_status == 'member',
             )
+        if new_status == 'kicked':
+            # Blocked: switch everything off, so unblocking alone doesn't
+            # bring the messages back — /start or the app does.
+            set_all_notifications(chat_id, False)
 
     def message(self, message):
         chat = message.get('chat') or {}
@@ -187,7 +228,18 @@ class TelegramWebhookView(APIView):
             return None
 
         command, _, argument = text.strip().partition(' ')
-        if command.split('@')[0] != '/start':
+        command = command.split('@')[0]
+        if command == '/stop':
+            if set_all_notifications(telegram_id, False):
+                return reply(
+                    chat['id'],
+                    'Готово, отчёты и напоминания выключены. Включить снова '
+                    '— /start или в настройках приложения.',
+                    path='/settings', button='Настройки',
+                )
+            return reply(chat['id'], not_linked_message, path='/login',
+                         button='Открыть и войти')
+        if command != '/start':
             return reply(
                 chat['id'],
                 'Это бот Black Fox Nutrition: здесь будут отчёты и '
@@ -200,8 +252,11 @@ class TelegramWebhookView(APIView):
 
         linked = TelegramAccount.objects.filter(telegram_id=telegram_id)
         if linked.update(can_write=True):
-            return reply(chat['id'], 'Вы снова на связи. Telegram '
-                                     'подключён к вашему аккаунту BFN.')
+            set_all_notifications(telegram_id, True)
+            return reply(chat['id'], 'Вы снова на связи: отчёты и '
+                                     'напоминания включены. Настроить — в '
+                                     'приложении.', path='/settings',
+                         button='Настройки')
         return reply(
             chat['id'],
             'Привет! Это бот Black Fox Nutrition. Откройте приложение и '

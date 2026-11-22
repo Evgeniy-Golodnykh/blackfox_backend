@@ -40,3 +40,53 @@ class TelegramAccount(models.Model):
 
     def __str__(self):
         return f'{self.user} ↔ {self.telegram_id}'
+
+
+class NotificationSettings(models.Model):
+    """What the bot sends a user and when. One row per user, created with
+    the defaults on first read."""
+
+    CHECKIN_TIMES = ('07:00', '08:00', '09:00', '10:00')
+    REPORT_TIMES = ('20:00', '21:00', '22:00')
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notification_settings',
+        verbose_name='аккаунт',
+    )
+    daily_report = models.BooleanField(default=True,
+                                       verbose_name='отчёт за день')
+    weekly_report = models.BooleanField(default=True,
+                                        verbose_name='итоги недели')
+    checkin_reminder = models.BooleanField(default=True,
+                                           verbose_name='утренний чек-ин')
+    reminders = models.BooleanField(default=True,
+                                    verbose_name='мягкие напоминания')
+    checkin_time = models.CharField(
+        max_length=5,
+        choices=[(t, t) for t in CHECKIN_TIMES],
+        default='08:00',
+        verbose_name='время чек-ина',
+    )
+    report_time = models.CharField(
+        max_length=5,
+        choices=[(t, t) for t in REPORT_TIMES],
+        default='21:00',
+        verbose_name='время отчёта',
+    )
+    timezone = models.CharField(
+        max_length=64,
+        default='Europe/Moscow',
+        verbose_name='часовой пояс',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    FLAGS = ('daily_report', 'weekly_report', 'checkin_reminder', 'reminders')
+
+    class Meta:
+        verbose_name = 'Настройки уведомлений'
+        verbose_name_plural = 'Настройки уведомлений'
+
+    def __str__(self):
+        return f'Уведомления {self.user}'

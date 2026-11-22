@@ -10,7 +10,7 @@ from rest_framework.test import APITestCase
 
 from tgbot.init_data import validate_init_data
 from tgbot.link_codes import check_link_code, make_link_code, parse_link_code
-from tgbot.models import TelegramAccount
+from tgbot.models import NotificationSettings, TelegramAccount
 
 User = get_user_model()
 
@@ -298,3 +298,91 @@ class WebhookTests(APITestCase):
         }})
         self.assertEqual(response.json(), {})
         self.assertEqual(self.post_update({'junk': True}).json(), {})
+
+
+NOTIFY_URL = '/api/users/me/notifications/'
+
+
+class NotificationSettingsTests(APITestCase):
+
+    def setUp(self):
+        self.user = make_user('anna')
+        self.client.force_authenticate(self.user)
+
+    def test_defaults_on_first_read(self):
+        self.assertEqual(self.client.get(NOTIFY_URL).json(), {
+            'telegram_linked': False,
+            'daily_report': True, 'weekly_report': True,
+            'checkin_reminder': True, 'reminders': True,
+            'checkin_time': '08:00', 'report_time': '21:00',
+            'timezone': 'Europe/Moscow',
+        })
+
+    def test_linked_means_linked_and_not_blocked(self):
+        account = TelegramAccount.objects.create(user=self.user,
+                                                 telegram_id=TG_ID)
+        self.assertTrue(self.client.get(NOTIFY_URL).json()['telegram_linked'])
+        account.can_write = False
+        account.save()
+        self.assertFalse(self.client.get(NOTIFY_URL).json()['telegram_linked'])
+
+    def test_patch_one_field(self):
+        response = self.client.patch(NOTIFY_URL, {'report_time': '22:00'},
+                                     format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['report_time'], '22:00')
+        self.assertEqual(response.json()['checkin_time'], '08:00')
+
+    def test_patch_rejects_bad_values_and_ignores_linked(self):
+        for patch in ({'report_time': '19:00'}, {'checkin_time': '8:00'},
+                      {'timezone': 'Mars/Olympus'}):
+            with self.subTest(patch=patch):
+                response = self.client.patch(NOTIFY_URL, patch, format='json')
+                self.assertEqual(response.status_code, 400)
+        response = self.client.patch(
+            NOTIFY_URL, {'telegram_linked': True, 'timezone': 'Asia/Omsk'},
+            format='json',
+        )
+        self.assertEqual(response.json()['timezone'], 'Asia/Omsk')
+        self.assertFalse(response.json()['telegram_linked'])
+
+    def test_needs_a_login(self):
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get(NOTIFY_URL).status_code, 401)
+
+
+@override_settings(TELEGRAM_BOT_TOKEN=BOT_TOKEN,
+                   TELEGRAM_WEBHOOK_SECRET=SECRET)
+class BotCommandTests(APITestCase):
+
+    def setUp(self):
+        self.user = make_user('anna')
+        TelegramAccount.objects.create(user=self.user, telegram_id=TG_ID)
+
+    def command(self, text):
+        return self.client.post(WEBHOOK_URL, {'update_id': 1, 'message': {
+            'text': text, 'chat': {'id': TG_ID, 'type': 'private'},
+            'from': {'id': TG_ID},
+        }}, format='json', HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN=SECRET)
+
+    def flags(self):
+        row = NotificationSettings.objects.get(user=self.user)
+        return [getattr(row, f) for f in NotificationSettings.FLAGS]
+
+    def test_stop_and_start(self):
+        self.assertIn('выключены', self.command('/stop').json()['text'])
+        self.assertEqual(self.flags(), [False] * 4)
+        self.assertIn('включены', self.command('/start').json()['text'])
+        self.assertEqual(self.flags(), [True] * 4)
+
+    def test_blocking_switches_everything_off(self):
+        self.client.post(WEBHOOK_URL, {'update_id': 2, 'my_chat_member': {
+            'chat': {'id': TG_ID, 'type': 'private'},
+            'new_chat_member': {'status': 'kicked'},
+        }}, format='json', HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN=SECRET)
+        self.assertEqual(self.flags(), [False] * 4)
+        self.assertFalse(TelegramAccount.objects.get().can_write)
+
+    def test_stop_when_not_linked(self):
+        TelegramAccount.objects.all().delete()
+        self.assertIn('не привязан', self.command('/stop').json()['text'])
