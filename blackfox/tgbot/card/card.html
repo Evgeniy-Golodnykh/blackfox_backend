@@ -1,0 +1,410 @@
+<!doctype html>
+<!--
+  Картинка-отчёт для Telegram-бота (день / неделя). Шаблон для бэкенда (копия docs/report-cards/card.html из
+  приложения, со шрифтами приложения из папки fonts/):
+  открыть этот файл в headless Chromium (Playwright), вызвать
+  window.renderCard(data) и снять скриншот элемента #card.
+  Подробности и формат data — docs/telegram-bot-reports.md, «Картинка-отчёт».
+  Без вызова renderCard показывает пример (удобно смотреть дизайн в браузере):
+  card.html — день, card.html#week — неделя.
+  Размер 540×960 CSS px → 1080×1920 при deviceScaleFactor 2 (9:16, как сторис).
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BFN report card</title>
+<style>
+  /* Шрифты приложения, из файлов рядом: Tektur — цифры, подписи и
+     заголовки; Montserrat — текст. Без жирных начертаний, как в приложении. */
+  @font-face { font-family: 'Montserrat'; font-weight: 400; font-display: block; src: url('fonts/Montserrat_400Regular.ttf') format('truetype'); }
+  @font-face { font-family: 'Montserrat'; font-weight: 500; font-display: block; src: url('fonts/Montserrat_500Medium.ttf') format('truetype'); }
+  @font-face { font-family: 'Montserrat'; font-weight: 600; font-display: block; src: url('fonts/Montserrat_600SemiBold.ttf') format('truetype'); }
+  @font-face { font-family: 'Tektur'; font-weight: 400; font-display: block; src: url('fonts/Tektur_400Regular.ttf') format('truetype'); }
+  @font-face { font-family: 'Tektur'; font-weight: 500; font-display: block; src: url('fonts/Tektur_500Medium.ttf') format('truetype'); }
+  @font-face { font-family: 'Tektur'; font-weight: 600; font-display: block; src: url('fonts/Tektur_600SemiBold.ttf') format('truetype'); }
+
+  :root {
+    --text: #FFFFFF;
+    --muted: #8D959C;
+    --dim: #5E666D;
+    --card: rgba(255,255,255,0.055);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; }
+  body { font-family: 'Montserrat', system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+
+  #card {
+    width: 540px; height: 960px; padding: 28px 22px 20px;
+    background: linear-gradient(180deg, #313940 0%, #1F2428 38%, #141719 100%);
+    display: flex; flex-direction: column; gap: 10px; overflow: hidden;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  .num, .caps, .brand, .datepill, .r .big, .cell .v b, .meals .m .k,
+  .weightline .big, .chip, .insight .t, .r .lbl, svg text { font-family: 'Tektur', 'Montserrat', sans-serif; }
+  .caps { text-transform: uppercase; letter-spacing: 0.16em; font-weight: 600; }
+
+  /* Шапка */
+  .head { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .brand { font-size: 13px; font-weight: 600; letter-spacing: 0.42em; color: #E6E9EB; padding-left: 0.42em; }
+  .datepill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 999px;
+    background: rgba(255,255,255,0.08); font-size: 11px; letter-spacing: 0.18em; font-weight: 600; }
+  .datepill .who { color: var(--muted); letter-spacing: 0.12em; }
+
+  /* Три кольца */
+  .rings { display: grid; grid-template-columns: repeat(3, 1fr); padding: 4px 6px 0; }
+  .r { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+  .r .wrap { position: relative; width: 104px; height: 104px; }
+  .r svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .r .val { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .r .big { font-size: 30px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+  .r .big small { font-size: 18px; font-weight: 600; margin-left: 1px; }
+  .r .under { margin-top: 5px; font-size: 9.5px; font-weight: 600; color: var(--muted); }
+  .r .lbl { font-size: 11.5px; }
+  .r .lbl::after { content: ' ›'; color: var(--muted); letter-spacing: 0; }
+
+  .card { background: var(--card); border-radius: 18px; padding: 14px 18px; }
+  .card .title { font-size: 11px; color: #D9DDE0; }
+  .card .titlerow { display: flex; justify-content: space-between; align-items: baseline; }
+  .card .side { font-size: 11px; font-weight: 600; color: var(--muted); }
+
+  /* Вывод дня */
+  .insight { display: flex; gap: 14px; align-items: flex-start; }
+  .insight .t { font-size: 15px; font-weight: 600; }
+  .insight .d { margin-top: 4px; font-size: 12.5px; font-weight: 500; line-height: 1.45; color: #C9CED2; }
+  .insight .bar { flex: none; width: 4px; align-self: stretch; border-radius: 2px; }
+
+  /* Строки питания (как в разборе сна: шкала из трёх делений) */
+  .cells { margin-top: 12px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .cell .name { font-size: 9.5px; letter-spacing: 0.1em; color: var(--muted); }
+  .cell .v { margin-top: 5px; white-space: nowrap; }
+  .cell .v b { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .cell .v span { font-size: 10px; font-weight: 600; color: var(--muted); }
+  .seg { display: flex; gap: 3px; margin-top: 7px; }
+  .seg i { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); }
+  .legend { display: flex; gap: 12px; font-size: 10.5px; font-weight: 600; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+  /* Приёмы пищи — полосой, как фазы сна */
+  .meals .stack { margin-top: 10px; display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; }
+  .meals .grid { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px 18px; }
+  .meals .m { display: flex; align-items: center; font-size: 12px; font-weight: 600; }
+  .meals .m .dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+  .meals .m .k { margin-left: auto; font-weight: 600; }
+  .meals .m .p { width: 38px; text-align: right; color: var(--muted); font-size: 11px; }
+
+  .chart svg { display: block; margin-top: 8px; overflow: visible; }
+  .spacer { flex: 1; }
+
+  /* Неделя */
+  .weightline { margin-top: 10px; display: flex; align-items: flex-end; gap: 12px; }
+  .weightline .big { font-size: 40px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+  .weightline .big small { font-size: 15px; font-weight: 600; margin-left: 4px; letter-spacing: 0; }
+  .weightline.compact { margin-top: 6px; }
+  .weightline.compact .big { font-size: 28px; }
+  .weightline.compact .big small { font-size: 13px; }
+  .weightline.compact .chip { margin-bottom: 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-bottom: 4px; }
+  .sentence { margin-top: 10px; font-size: 12.5px; font-weight: 500; line-height: 1.45; color: #C9CED2; }
+
+  .foot { display: flex; justify-content: space-between; font-size: 10.5px; font-weight: 600; color: var(--dim); }
+</style>
+</head>
+<body>
+<div id="card"></div>
+
+<script>
+(function () {
+  const C = {
+    green: '#16EC92', orange: '#FF9E1B', yellow: '#FFD60A', blue: '#0A93F0', steel: '#7BA3C2', grey: '#9AA1A7',
+    violet: '#A78BFA', pink: '#F472D0', cyan: '#4FD1C5',
+    track: 'rgba(255,255,255,0.09)', grid: 'rgba(255,255,255,0.08)', muted: '#8D959C', text: '#FFFFFF',
+  };
+  const MONTHS_SHORT = ['ЯНВ','ФЕВ','МАР','АПР','МАЯ','ИЮН','ИЮЛ','АВГ','СЕН','ОКТ','НОЯ','ДЕК'];
+  const WD = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  const MEAL_COLORS = [C.violet, C.blue, C.pink, C.cyan, C.steel];
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const fmt = (n, digits = 0) => n == null ? '—'
+    : Number(n).toLocaleString('ru-RU', { minimumFractionDigits: digits, maximumFractionDigits: digits }).replace(/ /g, ' ');
+  const d = (iso) => new Date(iso + 'T00:00:00Z');
+  const pillDate = (iso) => { const x = d(iso); return `${x.getUTCDate()} ${MONTHS_SHORT[x.getUTCMonth()]}`; };
+  const pct = (v, t) => (t && v != null ? Math.round((v / t) * 100) : null);
+  const plural = (n, one, few, many) => {
+    const a = Math.abs(n) % 100, b = a % 10;
+    if (a > 10 && a < 20) return many;
+    if (b === 1) return one;
+    if (b >= 2 && b <= 4) return few;
+    return many;
+  };
+
+  // Оценка показателя по трём делениям (мимо / близко / в цели), как в разборе сна.
+  //   range   — калории, жиры, углеводы: цель ±10% (близко — ±20%);
+  //   minimum — белок, клетчатка: от 90% цели и выше (близко — от 70%);
+  //   maximum — сахар: не больше цели (близко — до 120%).
+  function grade(value, target, kind) {
+    if (!target || value == null) return null;
+    const p = value / target;
+    if (kind === 'minimum') return p >= 0.9 ? 2 : p >= 0.7 ? 1 : 0;
+    if (kind === 'maximum') return p <= 1 ? 2 : p <= 1.2 ? 1 : 0;
+    return p >= 0.9 && p <= 1.1 ? 2 : p >= 0.8 && p <= 1.2 ? 1 : 0;
+  }
+  const GRADE_COLOR = [C.orange, C.grey, C.green];
+
+  function seg(g) {
+    if (g == null) return '<div class="seg"></div>';
+    return `<div class="seg">${[0, 1, 2].map((i) => `<i style="${i === g ? `background:${GRADE_COLOR[g]}` : ''}"></i>`).join('')}</div>`;
+  }
+
+  function ring(fraction, color, big, under, label) {
+    const r = 53, circ = 2 * Math.PI * r, f = Math.max(0, Math.min(fraction || 0, 1));
+    return `<div class="r"><div class="wrap">
+        <svg viewBox="0 0 122 122">
+          <circle cx="61" cy="61" r="${r}" fill="none" stroke="${C.track}" stroke-width="8"/>
+          ${f > 0 ? `<circle cx="61" cy="61" r="${r}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${circ * f} ${circ}"/>` : ''}
+        </svg>
+        <div class="val"><div class="big num">${big}</div>${under ? `<div class="under num">${under}</div>` : ''}</div>
+      </div><div class="lbl caps">${label}</div></div>`;
+  }
+
+  // Столбики по дням: подписи над столбиками, выбранный день подсвечен колонкой,
+  // зелёный пунктир — норма. colorByGrade красит столбики по попаданию в норму.
+  function dayBars(days, target, highlight, opts = {}) {
+    const W = 460, H = opts.height || 150, padT = 20, padB = 34, n = days.length;
+    const max = Math.max(target ? target * 1.2 : 0, ...days.map((x) => x.calories || 0)) || 1;
+    const y = (v) => padT + (H - padT - padB) * (1 - v / max);
+    const slot = W / n, bw = Math.min(26, slot * 0.4);
+    let s = '';
+    for (let i = 0; i <= 3; i++) {
+      const gy = padT + ((H - padT - padB) * i) / 3;
+      s += `<line x1="0" x2="${W}" y1="${gy}" y2="${gy}" stroke="${C.grid}" stroke-width="1"/>`;
+    }
+    const marks = [];
+    days.forEach((x, i) => {
+      const cx = slot * i + slot / 2, v = x.calories || 0, hi = x.date === highlight;
+      if (hi) s += `<rect x="${cx - slot / 2 + 4}" y="2" width="${slot - 8}" height="${H - 2}" rx="8" fill="rgba(255,255,255,0.07)"/>`;
+      let color = C.steel;
+      if (opts.colorByGrade && v) color = [C.orange, C.steel, C.green][grade(v, target, 'range') ?? 1];
+      if (v) {
+        s += `<rect x="${cx - bw / 2}" y="${y(v)}" width="${bw}" height="${H - padB - y(v)}" rx="3" fill="${color}" opacity="${hi || !highlight ? 1 : 0.7}"/>`;
+        marks.push(`<text x="${cx}" y="${y(v) - 7}" text-anchor="middle" font-size="11" font-weight="600" fill="${hi ? C.text : color}" stroke="#23282C" stroke-width="4" paint-order="stroke">${fmt(v)}</text>`);
+      } else {
+        s += `<text x="${cx}" y="${H - padB - 8}" text-anchor="middle" font-size="11" font-weight="600" fill="${C.muted}">—</text>`;
+      }
+      const dt = d(x.date);
+      s += `<text x="${cx}" y="${H - 17}" text-anchor="middle" font-size="11" font-weight="600" fill="${hi ? C.text : C.muted}">${WD[dt.getUTCDay()]}</text>`;
+      s += `<text x="${cx}" y="${H - 3}" text-anchor="middle" font-size="11" font-weight="600" fill="${hi ? C.text : C.muted}">${dt.getUTCDate()}</text>`;
+    });
+    if (target) {
+      s += `<line x1="0" x2="${W}" y1="${y(target)}" y2="${y(target)}" stroke="${C.green}" stroke-width="1.3" stroke-dasharray="5 5"/>`;
+    }
+    s += marks.join('');
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}</svg>`;
+  }
+
+  // Вес по неделям: тонкая линия + среднее за каждую неделю отрезком.
+  function weightTrend(points, H = 200) {
+    const pts = points.filter((p) => p.weight != null);
+    if (pts.length < 2) return '';
+    const W = 460, padT = 24, padB = 22, padX = 26;
+    const vals = pts.map((p) => p.weight);
+    const lo = Math.floor(Math.min(...vals) - 0.6), hi = Math.ceil(Math.max(...vals) + 0.6);
+    const slot = (W - padX) / pts.length;
+    const cx = (i) => padX + slot * i + slot / 2;
+    const y = (v) => padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo));
+    let s = '';
+    [lo, (lo + hi) / 2, hi].forEach((v) => {
+      s += `<line x1="${padX}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="${C.grid}"/>`;
+      s += `<text x="0" y="${y(v) + 4}" font-size="10" font-weight="600" fill="${C.muted}">${fmt(v)}</text>`;
+    });
+    const line = pts.map((p, i) => `${i ? 'L' : 'M'}${cx(i)},${y(p.weight)}`).join(' ');
+    s += `<path d="${line}" fill="none" stroke="${C.steel}" stroke-width="1.6" opacity="0.6"/>`;
+    pts.forEach((p, i) => {
+      const last = i === pts.length - 1;
+      s += `<line x1="${cx(i) - slot * 0.36}" x2="${cx(i) + slot * 0.36}" y1="${y(p.weight)}" y2="${y(p.weight)}" stroke="${last ? C.text : '#DDE2E6'}" stroke-width="${last ? 3.5 : 2.5}" stroke-linecap="round"/>`;
+      s += `<text x="${cx(i)}" y="${y(p.weight) - 9}" text-anchor="middle" font-size="11.5" font-weight="600" fill="${last ? C.text : '#C9CED2'}">${fmt(p.weight, 1)}</text>`;
+      s += `<text x="${cx(i)}" y="${H - 4}" text-anchor="middle" font-size="10.5" font-weight="600" fill="${last ? C.text : C.muted}">${esc(p.label)}</text>`;
+    });
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}</svg>`;
+  }
+
+  // «Вес · среднее» — общий блок для дня и недели. Меньше двух точек — не рисуется.
+  // В отчёте за день нет фразы-пояснения и график ниже, чтобы всё влезло.
+  function weightCard(w, opts = {}) {
+    if (!w || !w.points || w.points.filter((p) => p.weight != null).length < 2) return '';
+    const delta = w.avg != null && w.prevAvg != null ? w.avg - w.prevAvg : null;
+    const deltaPct = delta != null && w.prevAvg ? (delta / w.prevAvg) * 100 : null;
+    const flat = delta != null && Math.abs(delta) < 0.05;
+    const dColor = delta == null || flat ? C.muted : delta < 0 ? C.green : C.orange;
+    let sentence = '';
+    if (opts.sentence && delta != null) {
+      sentence = flat
+        ? `Средний вес за неделю (${fmt(w.avg, 1)} кг) такой же, как неделей раньше.`
+        : `Средний вес за неделю (${fmt(w.avg, 1)} кг) на ${fmt(Math.abs(delta), 1)} кг ${delta < 0 ? 'ниже' : 'выше'}, чем неделей раньше (${fmt(w.prevAvg, 1)} кг).`;
+    }
+    return `<div class="card chart">
+        <div class="titlerow"><div class="title caps">Вес · среднее</div><div class="side">по неделям</div></div>
+        <div class="weightline${opts.compact ? ' compact' : ''}"><div class="big num">${fmt(w.avg, 1)}<small>кг</small></div>
+          ${deltaPct != null ? `<div class="chip num" style="background:${dColor}26;color:${dColor}">${flat ? '●' : delta < 0 ? '▼' : '▲'} ${fmt(Math.abs(delta), 1)} кг · ${fmt(Math.abs(deltaPct), 1)}% к прошлой неделе</div>` : ''}</div>
+        ${sentence ? `<div class="sentence">${esc(sentence)}</div>` : ''}
+        ${weightTrend(w.points, opts.height)}
+      </div>`;
+  }
+
+  function header(pill, name) {
+    return `<div class="head"><div class="brand">BLACK FOX</div>
+      <div class="datepill num">${esc(pill)}${name ? `<span class="who">· ${esc(String(name).toUpperCase())}</span>` : ''}</div></div>`;
+  }
+  const foot = '<div class="foot"><span>blackfoxnutrition.ru</span><span>Данные из FatSecret</span></div>';
+
+  // Главный вывод дня — первое подходящее правило. `note` (комментарий тренера) важнее всех.
+  function dayInsight(r) {
+    const t = r.target || {};
+    if (r.note) return { title: 'Комментарий тренера', text: r.note, color: C.blue };
+    if (!t.calories) return null;
+    const diff = Math.round(r.calories - t.calories);
+    const topMeal = (r.meals || []).slice().sort((a, b) => b.calories - a.calories)[0];
+    if (r.calories > t.calories * 1.1) {
+      return { title: 'Перебор калорий', color: C.orange,
+        text: `На ${fmt(diff)} ккал больше нормы.${topMeal ? ` Больше всего — ${topMeal.name.toLowerCase()}, ${fmt(topMeal.calories)} ккал.` : ''}` };
+    }
+    if (r.calories < t.calories * 0.9) {
+      return { title: 'Недобор калорий', color: C.steel,
+        text: `На ${fmt(-diff)} ккал меньше нормы. Сильный недобор тяжело держать долго — лучше ровно каждый день.` };
+    }
+    if (t.protein && r.protein < t.protein * 0.9) {
+      const g = Math.round(t.protein - r.protein);
+      const chicken = Math.max(50, Math.round(g / 0.23 / 10) * 10);
+      return { title: 'Калории в норме, белка мало', color: C.yellow,
+        text: `Не хватило ${g} г белка — это примерно ${chicken} г куриной грудки.` };
+    }
+    return { title: 'День в норме', color: C.green,
+      text: r.streak ? `Калории и белок в цели. Записи — ${r.streak} ${plural(r.streak, 'день', 'дня', 'дней')} подряд.` : 'Калории и белок в цели.' };
+  }
+
+  function renderDay(r) {
+    const t = r.target || {};
+    const calP = pct(r.calories, t.calories), protP = pct(r.protein, t.protein);
+    const calColor = calP == null ? C.steel : [C.orange, C.steel, C.green][grade(r.calories, t.calories, 'range')];
+    const streak = r.streak || 0;
+    const nextGoal = [7, 14, 30, 60, 100, 200, 365].find((m) => m > streak) || streak;
+    const ins = dayInsight(r);
+
+    const rows = [
+      ['Белки', r.protein, t.protein, 'minimum'],
+      ['Жиры', r.fat, t.fat, 'range'],
+      ['Углеводы', r.carbs, t.carbs, 'range'],
+      ['Клетчатка', r.fiber, t.fiber, 'minimum'],
+      ['Сахар', r.sugar, t.sugar, 'maximum'],
+    ].filter((x) => x[1] != null);
+
+    const meals = (r.meals || []).filter((m) => m.calories > 0);
+    const mealsTotal = meals.reduce((a, m) => a + m.calories, 0) || 1;
+
+    return `${header(pillDate(r.date), r.name)}
+      <div class="rings">
+        ${ring(calP / 100, calColor, calP == null ? fmt(r.calories) : `${calP}<small>%</small>`, t.calories ? `${fmt(r.calories)} / ${fmt(t.calories)}` : 'ккал', 'Калории')}
+        ${ring(protP / 100, C.blue, protP == null ? fmt(r.protein) : `${protP}<small>%</small>`, t.protein ? `${fmt(r.protein)} / ${fmt(t.protein)} г` : 'г белка', 'Белок')}
+        ${ring(nextGoal ? streak / nextGoal : 0, C.yellow, fmt(streak), `${plural(streak, 'день', 'дня', 'дней')} подряд`, 'Серия')}
+      </div>
+      ${ins ? `<div class="card insight"><div class="bar" style="background:${ins.color}"></div>
+        <div><div class="t">${esc(ins.title)}</div><div class="d">${esc(ins.text)}</div></div></div>` : ''}
+      <div class="card">
+        <div class="titlerow"><div class="title caps">Питание</div>${t.calories ? `<div class="legend"><span><i style="background:${C.orange}"></i>мимо</span><span><i style="background:${C.grey}"></i>близко</span><span><i style="background:${C.green}"></i>в цели</span></div>` : ''}</div>
+        <div class="cells">
+          ${rows.map(([name, v, tg, kind]) => `<div class="cell"><div class="name caps">${name}</div>
+            <div class="v num"><b>${fmt(v)}</b><span>${tg ? ` / ${fmt(tg)}` : ' г'}</span></div>${seg(grade(v, tg, kind))}</div>`).join('')}
+        </div>
+      </div>
+      ${meals.length ? `<div class="card meals">
+        <div class="titlerow"><div class="title caps">Приёмы пищи</div><div class="side num">${fmt(r.calories)} ккал</div></div>
+        <div class="stack">${meals.map((m, i) => `<div style="flex:${m.calories};background:${MEAL_COLORS[i % MEAL_COLORS.length]}"></div>`).join('')}</div>
+        <div class="grid">${meals.map((m, i) => `<div class="m"><span class="dot" style="background:${MEAL_COLORS[i % MEAL_COLORS.length]}"></span>${esc(m.name)}
+          <span class="k num">${fmt(m.calories)}</span><span class="p num">${Math.round((m.calories / mealsTotal) * 100)}%</span></div>`).join('')}</div>
+      </div>` : ''}
+      ${r.last7 && r.last7.length ? `<div class="card chart">
+        <div class="titlerow"><div class="title caps">Калории · 7 дней</div>${t.calories ? `<div class="side num"><span style="color:${C.green}">- - -</span> норма ${fmt(t.calories)}</div>` : ''}</div>
+        ${dayBars(r.last7, t.calories, r.date, { height: 116 })}
+      </div>` : ''}
+      ${weightCard(r.weight, { height: 96, compact: true })}
+      <div class="spacer"></div>${foot}`;
+  }
+
+  function renderWeek(r) {
+    const t = r.target || {};
+    const logged = r.days.filter((x) => x.calories).length;
+    const avg = logged ? r.days.reduce((a, x) => a + (x.calories || 0), 0) / logged : null;
+    const inNorm = t.calories ? r.days.filter((x) => x.calories && grade(x.calories, t.calories, 'range') === 2).length : null;
+    const avgP = pct(avg, t.calories);
+    const w = r.weight || {};
+    const a = d(r.from), b = d(r.to);
+    const pill = a.getUTCMonth() === b.getUTCMonth()
+      ? `${a.getUTCDate()}–${b.getUTCDate()} ${MONTHS_SHORT[b.getUTCMonth()]}`
+      : `${pillDate(r.from)} – ${pillDate(r.to)}`;
+
+    return `${header(pill, r.name)}
+      <div class="rings">
+        ${ring(logged / r.days.length, C.steel, `${logged}<small>/${r.days.length}</small>`, 'с записями', 'Записи')}
+        ${ring(avgP / 100, avgP == null ? C.steel : [C.orange, C.steel, C.green][grade(avg, t.calories, 'range')], avgP == null ? fmt(avg) : `${avgP}<small>%</small>`, `${fmt(avg)} ккал`, 'Калории')}
+        ${ring(inNorm == null ? 0 : inNorm / r.days.length, C.green, inNorm ?? '—', `${plural(inNorm ?? 0, 'день', 'дня', 'дней')} в цели`, 'В норме')}
+      </div>
+      <div class="card chart">
+        <div class="titlerow"><div class="title caps">Калории по дням</div>${t.calories ? `<div class="side num"><span style="color:${C.green}">- - -</span> норма ${fmt(t.calories)}</div>` : ''}</div>
+        ${dayBars(r.days, t.calories, null, { height: 240, colorByGrade: true })}
+      </div>
+      ${weightCard(w, { sentence: true })}
+      <div class="spacer"></div>${foot}`;
+  }
+
+  window.renderCard = function (data) {
+    const el = document.getElementById('card');
+    el.innerHTML = data.kind === 'week' ? renderWeek(data) : renderDay(data);
+    return document.fonts.ready;
+  };
+
+  // ---- Пример (только для просмотра в браузере) ----
+  const SAMPLE_DAY = {
+    kind: 'day', date: '2026-11-21', name: 'Анна',
+    calories: 1840, protein: 112, fat: 64, carbs: 190, fiber: 18, sugar: 41,
+    target: { calories: 2000, protein: 140, fat: 70, carbs: 210, fiber: 25, sugar: 50 },
+    streak: 12,
+    meals: [
+      { name: 'Завтрак', calories: 420 }, { name: 'Обед', calories: 760 },
+      { name: 'Ужин', calories: 520 }, { name: 'Перекус', calories: 140 },
+    ],
+    last7: [
+      { date: '2026-11-15', calories: 2150 }, { date: '2026-11-16', calories: 1950 },
+      { date: '2026-11-17', calories: 2380 }, { date: '2026-11-18', calories: 0 },
+      { date: '2026-11-19', calories: 1720 }, { date: '2026-11-20', calories: 2040 },
+      { date: '2026-11-21', calories: 1840 },
+    ],
+    weight: {
+      avg: 81.9, prevAvg: 82.4,
+      points: [
+        { label: '19.10', weight: 83.6 }, { label: '26.10', weight: 83.1 }, { label: '02.11', weight: 82.8 },
+        { label: '09.11', weight: 82.4 }, { label: '16.11', weight: 81.9 },
+      ],
+    },
+  };
+  const SAMPLE_WEEK = {
+    kind: 'week', from: '2026-11-16', to: '2026-11-22', name: 'Анна',
+    target: { calories: 2000 },
+    days: [
+      { date: '2026-11-16', calories: 2380 }, { date: '2026-11-17', calories: 0 },
+      { date: '2026-11-18', calories: 1720 }, { date: '2026-11-19', calories: 2040 },
+      { date: '2026-11-20', calories: 1840 }, { date: '2026-11-21', calories: 1960 },
+      { date: '2026-11-22', calories: 1580 },
+    ],
+    weight: {
+      avg: 81.9, prevAvg: 82.4,
+      points: [
+        { label: '19.10', weight: 83.6 }, { label: '26.10', weight: 83.1 }, { label: '02.11', weight: 82.8 },
+        { label: '09.11', weight: 82.4 }, { label: '16.11', weight: 81.9 },
+      ],
+    },
+  };
+  if (!window.__CARD_EXTERNAL__) window.renderCard(location.hash === '#week' ? SAMPLE_WEEK : SAMPLE_DAY);
+})();
+</script>
+</body>
+</html>

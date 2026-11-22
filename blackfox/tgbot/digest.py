@@ -5,7 +5,7 @@ src/features/stats/utils.ts), so the bot and the app never disagree.
 """
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Optional, Tuple
 
 from checkins.models import DailyCheckin
@@ -22,6 +22,10 @@ class Message:
     kind: str
     text: str
     button: Optional[Tuple[str, str]] = None  # (text, app path)
+    # For the picture version: a one-line caption (seen in the chat list)
+    # and the date the card is for.
+    caption: Optional[str] = None
+    card_date: Optional[date] = None
 
 
 def num(value):
@@ -94,6 +98,7 @@ def daily_report(user, date):
     lines = [f'📊 Отчёт за {day_month(date)}', '']
     calories = entry.calories_actual
     target = entry.calories_target
+    caption = f'📊 {day_month(date)} · {num(calories)}'
     if target:
         percent = round(calories / target * 100)
         lines.append(f'{num(calories)} / {num(target)} ккал · {percent}%')
@@ -111,23 +116,31 @@ def daily_report(user, date):
     if target:
         lines.append('')
         diff = calories - target
+        caption += f' / {num(target)} ккал · '
         if diff > target * 0.1:
             lines.append(f'⬆️ Больше нормы на {num(diff)} ккал')
+            caption += f'⬆️ +{num(diff)}'
         elif diff < -target * 0.1:
             lines.append(f'⬇️ Меньше нормы на {num(-diff)} ккал')
+            caption += f'⬇️ −{num(-diff)}'
         else:
             lines.append('✅ В пределах нормы')
+            caption += '✅ в норме'
         protein_left = (entry.protein_target or 0) - entry.protein_actual
         if entry.protein_target and protein_left > entry.protein_target * 0.1:
             lines.append(f'🥩 Белка не хватило {num(protein_left)} г')
         streak = norm_streak(user, date)
         if streak >= 2:
             lines.append(f'🔥 {streak} {days_word(streak)} подряд в норме')
+    else:
+        caption += ' ккал'
 
     return Message(
         kind='daily_report',
         text='\n'.join(lines),
         button=('Открыть день', f'/stats?day={date.isoformat()}'),
+        caption=caption,
+        card_date=date,
     )
 
 
@@ -184,6 +197,7 @@ def weekly_report(user, monday):
     else:
         lines.append(f'Средние калории: {num(avg_calories)}')
 
+    caption = f'🗓 Неделя {period}'
     weights = weights_by_date(user, start - timedelta(days=7), end)
     this_week = average(w for d, w in weights.items() if d >= start)
     last_week = average(w for d, w in weights.items() if d < start)
@@ -192,11 +206,13 @@ def weekly_report(user, monday):
         sign = '−' if delta < 0 else '+'
         lines.append(f'Вес: {kg(last_week)} → {kg(this_week)} кг '
                      f'({sign}{kg(abs(delta))})')
+        caption += f' · вес {sign}{kg(abs(delta))} кг'
     elif this_week is not None:
         lines.append(f'Вес: {kg(this_week)} кг')
 
     return Message(kind='weekly_report', text='\n'.join(lines),
-                   button=('Открыть статистику', '/stats'))
+                   button=('Открыть статистику', '/stats'),
+                   caption=caption, card_date=monday)
 
 
 # ----- reminders -----------------------------------------------------------

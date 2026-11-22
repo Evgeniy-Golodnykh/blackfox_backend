@@ -277,6 +277,13 @@ TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', 'bfnutrition_bot')
 # run `python manage.py set_telegram_webhook` once.
 TELEGRAM_WEBHOOK_SECRET = os.getenv('TELEGRAM_WEBHOOK_SECRET', '')
 
+# The picture report (tgbot/card_render.py). Empty: Playwright's own
+# Chromium (installed in the Docker image); a path: that browser.
+CARD_CHROMIUM_PATH = os.getenv('CARD_CHROMIUM_PATH', '')
+
+# Off: the evening and weekly reports go as text only.
+TELEGRAM_REPORT_CARDS = os.getenv('TELEGRAM_REPORT_CARDS', '1') == '1'
+
 TELEGRAM_WEBHOOK_URL = os.getenv(
     'TELEGRAM_WEBHOOK_URL',
     'https://www.blackfoxnutrition.ru/api/telegram/webhook/',

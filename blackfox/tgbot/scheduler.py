@@ -11,13 +11,15 @@ import time
 from datetime import datetime, time as dtime, timedelta
 
 import pytz
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from tgbot import digest
+from tgbot import cards, digest
+from tgbot.card_render import CardRenderer
 from tgbot.models import NotificationLog, NotificationSettings
-from tgbot.telegram_api import BLOCKED, FAILED, send_message
+from tgbot.telegram_api import BLOCKED, FAILED, send_message, send_photo
 from training.models import FoodDiary, Project
 
 logger = logging.getLogger(__name__)
@@ -112,7 +114,31 @@ def due_messages(user, prefs, now, refresh=True):
     return due
 
 
-def deliver(account, message, log_date):
+def card_data(user, message):
+    if message.card_date is None:
+        return None
+    if message.kind == 'daily_report':
+        return cards.day_card(user, message.card_date)
+    return cards.week_card(user, message.card_date)
+
+
+def send(account, message, renderer=None):
+    """The picture with a caption when it can be drawn, else the text."""
+
+    if renderer is not None and message.card_date is not None:
+        data = card_data(account.user, message)
+        jpeg = renderer.render(data) if data else None
+        if jpeg:
+            return send_photo(account.telegram_id, jpeg, message.caption,
+                              message.button)
+    return send_message(account.telegram_id, message.text, message.button)
+
+
+def new_renderer():
+    return CardRenderer() if settings.TELEGRAM_REPORT_CARDS else None
+
+
+def deliver(account, message, log_date, renderer=None):
     """Write the log row, then send. 'skipped' if already sent."""
 
     try:
@@ -122,7 +148,7 @@ def deliver(account, message, log_date):
             )
     except IntegrityError:
         return 'skipped'
-    result = send_message(account.telegram_id, message.text, message.button)
+    result = send(account, message, renderer)
     if result == BLOCKED:
         account.can_write = False
         account.save(update_fields=['can_write'])
@@ -149,22 +175,35 @@ def run(now=None, dry_run=False, usernames=None, refresh=True):
     if usernames:
         users = users.filter(username__in=usernames)
     report = []
-    for user in users:
-        prefs = (NotificationSettings.objects.filter(user=user).first()
-                 or NotificationSettings(user=user))
-        try:
-            messages = due_messages(user, prefs, now, refresh=refresh)
-        except Exception as err:
-            logger.exception('Telegram schedule for %s failed: %s', user.pk,
-                             type(err).__name__)
+    renderer = None if dry_run else new_renderer()
+    try:
+        for user in users:
+            report.extend(run_for(user, now, dry_run, refresh, renderer))
+    finally:
+        if renderer is not None:
+            renderer.close()
+    return report
+
+
+def run_for(user, now, dry_run, refresh, renderer):
+    """[(username, Message, result)] for one user."""
+
+    prefs = (NotificationSettings.objects.filter(user=user).first()
+             or NotificationSettings(user=user))
+    try:
+        messages = due_messages(user, prefs, now, refresh=refresh)
+    except Exception as err:
+        logger.exception('Telegram schedule for %s failed: %s', user.pk,
+                         type(err).__name__)
+        return []
+    report = []
+    for message, log_date in messages:
+        if dry_run:
+            report.append((user.username, message, 'dry-run'))
             continue
-        for message, log_date in messages:
-            if dry_run:
-                report.append((user.username, message, 'dry-run'))
-                continue
-            result = deliver(user.telegram, message, log_date)
-            report.append((user.username, message, result))
-            time.sleep(PAUSE_BETWEEN_SENDS)
+        result = deliver(user.telegram, message, log_date, renderer)
+        report.append((user.username, message, result))
+        time.sleep(PAUSE_BETWEEN_SENDS)
     return report
 
 
@@ -195,8 +234,12 @@ def send_now(user, kind, now=None):
         )
     if message is None:
         return None
-    return send_message(user.telegram.telegram_id, message.text,
-                        message.button)
+    renderer = new_renderer()
+    try:
+        return send(user.telegram, message, renderer)
+    finally:
+        if renderer is not None:
+            renderer.close()
 
 
 def as_local(naive, zone='Europe/Moscow'):

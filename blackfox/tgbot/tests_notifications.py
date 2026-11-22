@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase
 
 from checkins.models import DailyCheckin
-from tgbot import digest, scheduler
+from tgbot import cards, digest, scheduler
 from tgbot.models import NotificationLog, NotificationSettings, TelegramAccount
 from tgbot.telegram_api import BLOCKED, FAILED, SENT
 from training.models import BodyStatsDiary, FoodDiary, Project
@@ -156,6 +156,7 @@ class DigestTests(TestCase):
         self.assertIsNone(digest.checkin_reminder(self.user, TODAY))
 
 
+@override_settings(TELEGRAM_REPORT_CARDS=False)
 @mock.patch('tgbot.scheduler.time.sleep')
 @mock.patch('tgbot.scheduler.refresh_diary')
 @mock.patch('tgbot.scheduler.send_message', return_value=SENT)
@@ -250,7 +251,7 @@ class SchedulerTests(TestCase):
 TEST_URL = '/api/users/me/telegram/test/'
 
 
-@override_settings(TELEGRAM_BOT_TOKEN='1:x')
+@override_settings(TELEGRAM_BOT_TOKEN='1:x', TELEGRAM_REPORT_CARDS=False)
 @mock.patch('tgbot.scheduler.refresh_diary')
 @mock.patch('tgbot.scheduler.send_message', return_value=SENT)
 class SendExampleTests(APITestCase):
@@ -312,3 +313,111 @@ class TelegramApiTests(TestCase):
         ]
         self.assertEqual(send_message(1, 'hi'), SENT)
         sleep.assert_called_once_with(3)
+
+
+class CardDataTests(TestCase):
+
+    def setUp(self):
+        self.user = make_client()
+        self.user.first_name = 'Анна'
+        self.user.save()
+
+    def test_day_card(self):
+        for back in (1, 2, 4):
+            eat(self.user, TODAY - timedelta(days=back), weight=82.0)
+        eat(self.user, TODAY, calories=1840, protein=118, weight=81.6)
+        with mock.patch('tgbot.cards.meals_for', return_value=[
+            {'name': 'Завтрак', 'calories': 420},
+        ]):
+            data = cards.day_card(self.user, TODAY)
+
+        self.assertEqual(data['kind'], 'day')
+        self.assertEqual(data['name'], 'Анна')
+        self.assertEqual(data['calories'], 1840)
+        self.assertEqual(data['target']['calories'], 2000)
+        self.assertEqual(data['streak'], 3)  # day 3 has no food
+        self.assertEqual(len(data['last7']), 7)
+        self.assertEqual(data['last7'][-1],
+                         {'date': '2026-11-23', 'calories': 1840})
+        self.assertEqual(data['last7'][3]['calories'], 0)
+        self.assertEqual(data['meals'][0]['name'], 'Завтрак')
+        self.assertEqual(data['weight']['avg'], 81.9)
+
+    def test_no_card_without_food(self):
+        self.assertIsNone(cards.day_card(self.user, TODAY))
+        self.assertIsNone(cards.week_card(self.user, TODAY))
+
+    def test_week_card(self):
+        eat(self.user, TODAY - timedelta(days=7), calories=2100)
+        eat(self.user, TODAY - timedelta(days=2), calories=1800)
+        data = cards.week_card(self.user, TODAY)
+        self.assertEqual((data['from'], data['to']),
+                         ('2026-11-16', '2026-11-22'))
+        self.assertEqual([d['calories'] for d in data['days']],
+                         [2100, 0, 0, 0, 0, 1800, 0])
+        self.assertEqual(data['target'], {'calories': 2000})
+
+    def test_meals_from_fatsecret(self):
+        entries = {'food_entry': [
+            {'meal': 'Lunch', 'calories': '500'},
+            {'meal': 'Breakfast', 'calories': '300.4'},
+            {'meal': 'Lunch', 'calories': '120'},
+        ]}
+        session = mock.patch('fatsecret.tools.fatsecret.get_session')
+        fetch = mock.patch('fatsecret.tools.get_fatsecret_data',
+                           return_value=entries)
+        with session, fetch:
+            meals = cards.meals_for(self.user, TODAY)
+        self.assertEqual(meals, [{'name': 'Завтрак', 'calories': 300},
+                                 {'name': 'Обед', 'calories': 620}])
+
+    def test_meals_survive_fatsecret_errors(self):
+        with mock.patch('fatsecret.tools.fatsecret.get_session',
+                        side_effect=RuntimeError):
+            self.assertEqual(cards.meals_for(self.user, TODAY), [])
+
+
+@override_settings(TELEGRAM_REPORT_CARDS=True)
+@mock.patch('tgbot.scheduler.time.sleep')
+@mock.patch('tgbot.scheduler.refresh_diary')
+@mock.patch('tgbot.cards.meals_for', return_value=[])
+@mock.patch('tgbot.scheduler.send_message', return_value=SENT)
+@mock.patch('tgbot.scheduler.send_photo', return_value=SENT)
+class CardDeliveryTests(TestCase):
+
+    def setUp(self):
+        self.user = make_client()
+        TelegramAccount.objects.create(user=self.user, telegram_id=TG_ID)
+        DailyCheckin.objects.create(user=self.user, date=TODAY, sleep=3,
+                                    wellbeing=3, stress=3, hunger=3)
+        BodyStatsDiary.objects.create(user=self.user, date=TODAY, waist=80)
+        eat(self.user, TODAY, weight=81.5)
+
+    def test_report_goes_as_a_picture_with_caption(self, photo, text, *_):
+        with mock.patch('tgbot.scheduler.CardRenderer') as renderer:
+            renderer.return_value.render.return_value = b'jpeg'
+            scheduler.run(now=moscow(TODAY, '21:05'))
+
+        photo.assert_called_once()
+        chat_id, jpeg, caption, button = photo.call_args.args
+        self.assertEqual((chat_id, jpeg), (TG_ID, b'jpeg'))
+        self.assertEqual(caption,
+                         '📊 23 ноября · 1\u00a0900 / 2\u00a0000 ккал · '
+                         '✅ в норме')
+        self.assertEqual(button[1], '/stats?day=2026-11-23')
+        text.assert_not_called()
+        renderer.return_value.close.assert_called_once()
+
+    def test_falls_back_to_text_when_drawing_fails(self, photo, text, *_):
+        with mock.patch('tgbot.scheduler.CardRenderer') as renderer:
+            renderer.return_value.render.return_value = None
+            scheduler.run(now=moscow(TODAY, '21:05'))
+        photo.assert_not_called()
+        self.assertIn('Отчёт за 23 ноября', text.call_args.args[1])
+
+    def test_reminders_stay_text(self, photo, text, *_):
+        with mock.patch('tgbot.scheduler.CardRenderer'):
+            DailyCheckin.objects.all().delete()
+            scheduler.run(now=moscow(TODAY, '08:05'))
+        photo.assert_not_called()
+        text.assert_called_once()
