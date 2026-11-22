@@ -1,0 +1,72 @@
+name: run migrations
+
+# Runs only when started by hand: Actions → "run migrations" → Run workflow,
+# branch nf-release. Deploys never migrate on their own.
+#
+# Without "apply" it only prints the plan — what would be applied.
+# With "apply" it backs up the database first (unless unticked), and stops
+# without migrating if the backup fails.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Apply migrations (unticked: only show the plan)'
+        type: boolean
+        default: false
+      backup:
+        description: 'Back up the database before applying'
+        type: boolean
+        default: true
+
+# Never run at the same time as another job on the production server.
+concurrency:
+  group: production-server
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: github.ref_name == 'nf-release'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: plan, back up and migrate over ssh
+      uses: appleboy/ssh-action@v1.2.0
+      env:
+        APPLY: ${{ inputs.apply }}
+        BACKUP: ${{ inputs.backup }}
+      with:
+        host: ${{ secrets.HOST_IP }}
+        username: ${{ secrets.HOST_USERNAME }}
+        password: ${{ secrets.HOST_PASSWORD }}
+        port: ${{ secrets.HOST_SSH_PORT }}
+        envs: APPLY,BACKUP
+        script: |
+          set -e
+
+          echo "== Migrations to apply =="
+          sudo docker compose exec -T backend python manage.py migrate --plan
+
+          if [ "$APPLY" != "true" ]; then
+            echo "Plan only: nothing applied."
+            exit 0
+          fi
+
+          if [ "$BACKUP" = "true" ]; then
+            mkdir -p ~/db_backups
+            FILE=~/db_backups/blackfox_$(date +%Y%m%d_%H%M%S).dump
+            echo "== Backing up the database to $FILE =="
+            # pg_dump from the official image, with the same connection
+            # settings the backend uses (the .env written by the deploy).
+            sudo docker run --rm --network host --env-file .env postgres:17 \
+              sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' \
+              > "$FILE"
+            test -s "$FILE"
+            ls -lh "$FILE"
+          fi
+
+          echo "== Applying =="
+          sudo docker compose exec -T backend python manage.py migrate --noinput
+
+          echo "== State after =="
+          sudo docker compose exec -T backend python manage.py showmigrations
