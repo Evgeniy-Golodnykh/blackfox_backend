@@ -1,6 +1,8 @@
 from django.contrib import admin
 
-from tgbot.models import NotificationSettings, TelegramAccount
+from tgbot.models import (
+    NotificationLog, NotificationSettings, TelegramAccount,
+)
 
 
 @admin.register(TelegramAccount)
@@ -18,4 +20,11 @@ class NotificationSettingsAdmin(admin.ModelAdmin):
         'user', 'daily_report', 'weekly_report', 'checkin_reminder',
         'reminders', 'checkin_time', 'report_time', 'timezone',
     )
+    raw_id_fields = ('user',)
+
+
+@admin.register(NotificationLog)
+class NotificationLogAdmin(admin.ModelAdmin):
+    list_display = ('user', 'kind', 'date', 'sent_at')
+    list_filter = ('kind', 'date')
     raw_id_fields = ('user',)

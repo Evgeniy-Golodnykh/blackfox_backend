@@ -90,3 +90,31 @@ class NotificationSettings(models.Model):
 
     def __str__(self):
         return f'Уведомления {self.user}'
+
+
+class NotificationLog(models.Model):
+    """One row per message the bot sent: (user, kind, date) is unique, and
+    the row is written before sending, so nothing goes out twice."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='telegram_notifications',
+        verbose_name='аккаунт',
+    )
+    kind = models.CharField(max_length=20, verbose_name='что')
+    # The user's local day it's for (the Monday, for the weekly summary).
+    date = models.DateField(verbose_name='за день')
+    sent_at = models.DateTimeField(auto_now_add=True, verbose_name='когда')
+
+    class Meta:
+        verbose_name = 'Отправленное сообщение'
+        verbose_name_plural = 'Отправленные сообщения'
+        ordering = ['-sent_at']
+        constraints = [
+            models.UniqueConstraint(fields=('user', 'kind', 'date'),
+                                    name='unique_telegram_notification'),
+        ]
+
+    def __str__(self):
+        return f'{self.kind} → {self.user} за {self.date}'

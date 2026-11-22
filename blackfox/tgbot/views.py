@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -14,7 +15,9 @@ from tgbot.link_codes import (
     LIFETIME_SECONDS, check_link_code, make_link_code, parse_link_code,
 )
 from tgbot.models import NotificationSettings, TelegramAccount
+from tgbot.scheduler import send_now
 from tgbot.serializers import NotificationSettingsSerializer
+from tgbot.telegram_api import SENT
 from tgbot.services import TelegramTakenError, link_telegram
 from users.serializers import CustomUserSerializer
 
@@ -136,6 +139,37 @@ def set_all_notifications(telegram_id, enabled):
         defaults={flag: enabled for flag in NotificationSettings.FLAGS},
     )
     return True
+
+
+class TelegramTestMessageView(APIView):
+    """POST /api/users/me/telegram/test/ {"kind": …} — send yourself an
+    example right now (daily_report, weekly_report or checkin)."""
+
+    permission_classes = (IsAuthenticated,)
+    throttle_scope = 'telegram_test'
+    throttle_classes = (ScopedRateThrottle,)
+    KINDS = ('daily_report', 'weekly_report', 'checkin')
+
+    def post(self, request):
+        kind = request.data.get('kind')
+        if kind not in self.KINDS:
+            return Response({'detail': 'Неизвестный вид сообщения.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        account = TelegramAccount.objects.filter(user=request.user).first()
+        if account is None or not account.can_write:
+            return Response({'detail': not_linked_message},
+                            status=status.HTTP_409_CONFLICT)
+        result = send_now(request.user, kind)
+        if result is None:
+            return Response(
+                {'detail': 'Пока не из чего собрать отчёт — нет записей '
+                           'в дневнике.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if result != SENT:
+            return Response({'detail': 'Telegram не принял сообщение.'},
+                            status=status.HTTP_502_BAD_GATEWAY)
+        return Response({'sent': True})
 
 
 class TelegramLinkCodeView(APIView):

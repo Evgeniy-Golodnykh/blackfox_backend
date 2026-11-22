@@ -204,6 +204,7 @@ REST_FRAMEWORK = {
     # X-Forwarded-For, or everyone shares one limit.
     'DEFAULT_THROTTLE_RATES': {
         'questionnaire': os.getenv('QUESTIONNAIRE_THROTTLE_RATE', '5/hour'),
+        'telegram_test': '10/hour',
     },
 }
 
@@ -248,6 +249,7 @@ CRONJOBS = [
     ('0 1 * * *', 'api.cron.fooddiary_autoupdate', '>> /var/log/cron.log 2>&1'),
     ('0 2 * * *', 'api.cron.delete_inactive_users', '>> /var/log/cron.log 2>&1'),
     ('0 3 * * *', 'api.cron.delete_inactive_projects', '>> /var/log/cron.log 2>&1'),
+    ('*/10 * * * *', 'tgbot.cron.send_due_notifications', '>> /var/log/cron.log 2>&1'),
 ]
 
 SPECTACULAR_SETTINGS = {
