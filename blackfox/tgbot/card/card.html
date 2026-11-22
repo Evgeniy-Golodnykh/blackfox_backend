@@ -107,6 +107,11 @@
   .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-bottom: 4px; }
   .sentence { margin-top: 10px; font-size: 12.5px; font-weight: 500; line-height: 1.45; color: #C9CED2; }
 
+  /* Энергия: съедено / потрачено / баланс (если есть данные о расходе) */
+  .energy { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 18px; }
+  .energy .name { font-size: 9.5px; letter-spacing: 0.1em; color: var(--muted); }
+  .energy b { display: block; margin-top: 4px; font-size: 17px; font-weight: 600; }
+  .energy b span { font-size: 10px; color: var(--muted); margin-left: 3px; }
   .foot { display: flex; justify-content: space-between; font-size: 10.5px; font-weight: 600; color: var(--dim); }
 </style>
 </head>
@@ -307,6 +312,11 @@
         ${ring(protP / 100, C.blue, protP == null ? fmt(r.protein) : `${protP}<small>%</small>`, t.protein ? `${fmt(r.protein)} / ${fmt(t.protein)} г` : 'г белка', 'Белок')}
         ${ring(nextGoal ? streak / nextGoal : 0, C.yellow, fmt(streak), `${plural(streak, 'день', 'дня', 'дней')} подряд`, 'Серия')}
       </div>
+      ${r.burned ? `<div class="card energy">
+        <div><div class="name caps">Съедено</div><b class="num">${fmt(r.calories)}<span>ккал</span></b></div>
+        <div><div class="name caps">Потрачено</div><b class="num">${fmt(r.burned)}<span>ккал</span></b></div>
+        <div><div class="name caps">Баланс · оценка</div><b class="num" style="color:${r.calories <= r.burned ? C.green : C.orange}">≈ ${r.calories <= r.burned ? '−' : '+'}${fmt(Math.abs(r.calories - r.burned))}<span>ккал</span></b></div>
+      </div>` : ''}
       ${ins ? `<div class="card insight"><div class="bar" style="background:${ins.color}"></div>
         <div><div class="t">${esc(ins.title)}</div><div class="d">${esc(ins.text)}</div></div></div>` : ''}
       <div class="card">
@@ -324,9 +334,9 @@
       </div>` : ''}
       ${r.last7 && r.last7.length ? `<div class="card chart">
         <div class="titlerow"><div class="title caps">Калории · 7 дней</div>${t.calories ? `<div class="side num"><span style="color:${C.green}">- - -</span> норма ${fmt(t.calories)}</div>` : ''}</div>
-        ${dayBars(r.last7, t.calories, r.date, { height: 116 })}
+        ${dayBars(r.last7, t.calories, r.date, { height: r.burned ? 76 : 116 })}
       </div>` : ''}
-      ${weightCard(r.weight, { height: 96, compact: true })}
+      ${weightCard(r.weight, { height: r.burned ? 76 : 96, compact: true })}
       <div class="spacer"></div>${foot}`;
   }
 
@@ -367,7 +377,7 @@
     kind: 'day', date: '2026-11-21', name: 'Анна',
     calories: 1840, protein: 112, fat: 64, carbs: 190, fiber: 18, sugar: 41,
     target: { calories: 2000, protein: 140, fat: 70, carbs: 210, fiber: 25, sugar: 50 },
-    streak: 12,
+    streak: 12, burned: 2335,
     meals: [
       { name: 'Завтрак', calories: 420 }, { name: 'Обед', calories: 760 },
       { name: 'Ужин', calories: 520 }, { name: 'Перекус', calories: 140 },

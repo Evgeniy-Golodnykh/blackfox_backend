@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django_crontab',
     'django_cleanup.apps.CleanupConfig',
 
+    'activity',
     'api',
     'checkins',
     'content',

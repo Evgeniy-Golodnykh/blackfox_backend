@@ -16,6 +16,7 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from activity.sync import sync_activity
 from tgbot import cards, digest
 from tgbot.card_render import CardRenderer
 from tgbot.models import NotificationLog, NotificationSettings
@@ -66,6 +67,7 @@ def refresh_diary(user):
     except Exception as err:  # FatSecret down, token revoked…
         logger.warning('FatSecret refresh for %s failed: %s', user.pk,
                        type(err).__name__)
+    sync_activity(user)  # calories burned, for the report's balance line
 
 
 def due_messages(user, prefs, now, refresh=True):

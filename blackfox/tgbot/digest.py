@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional, Tuple
 
+from activity.models import ActivityDay
 from checkins.models import DailyCheckin
 from training.models import BodyStatsDiary, FoodDiary
 
@@ -88,6 +89,19 @@ def days_word(n):
 
 # ----- evening report ------------------------------------------------------
 
+def burned_on(user, date):
+    """Calories burned that day (from Apple Health via FatSecret), or None."""
+
+    day = ActivityDay.objects.filter(user=user, date=date).first()
+    return day.calories_burned if day else None
+
+
+def signed(value):
+    """−495 / +120 — the balance of eaten minus burned."""
+
+    return f'−{num(-value)}' if value < 0 else f'+{num(value)}'
+
+
 def daily_report(user, date):
     """The day's numbers against the plan, or None if nothing was logged."""
 
@@ -134,6 +148,11 @@ def daily_report(user, date):
             lines.append(f'🔥 {streak} {days_word(streak)} подряд в норме')
     else:
         caption += ' ккал'
+
+    burned = burned_on(user, date)
+    if burned:
+        lines += ['', f'⚡️ Потрачено {num(burned)} ккал · баланс '
+                      f'≈ {signed(calories - burned)} (оценка)']
 
     return Message(
         kind='daily_report',

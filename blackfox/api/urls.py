@@ -6,6 +6,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView, TokenRefreshView,
 )
 
+from activity.views import ActivityView
 from checkins.views import CheckinsView
 from content.views import ArticleViewSet, VideoViewSet
 from questionnaire.views import QuestionnaireViewSet
@@ -34,6 +35,7 @@ urlpatterns = [
     path('fatsecret/', include('fatsecret.urls')),
     path('cycle/', include('cycles.urls')),
     path('checkins/', CheckinsView.as_view(), name='checkins'),
+    path('activity/', ActivityView.as_view(), name='activity'),
     path('', include('tgbot.urls')),
     path('', include(router.urls)),
 ]

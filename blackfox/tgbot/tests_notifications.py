@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase
 
+from activity.models import ActivityDay
 from checkins.models import DailyCheckin
 from tgbot import cards, digest, scheduler
 from tgbot.models import NotificationLog, NotificationSettings, TelegramAccount
@@ -79,6 +80,17 @@ class DigestTests(TestCase):
         text = digest.daily_report(self.user, TODAY).text
         self.assertIn('✅ В пределах нормы', text)
         self.assertIn('🥩 Белка не хватило 22 г', text)
+
+    def test_daily_report_shows_burned_and_balance(self):
+        eat(self.user, TODAY, calories=1840)
+        before = digest.daily_report(self.user, TODAY).text
+        self.assertNotIn('Потрачено', before)
+        ActivityDay.objects.create(user=self.user, date=TODAY,
+                                   calories_burned=2335)
+        self.assertIn('⚡️ Потрачено 2\u00a0335 ккал · баланс ≈ −495 (оценка)',
+                      digest.daily_report(self.user, TODAY).text)
+        with mock.patch('tgbot.cards.meals_for', return_value=[]):
+            self.assertEqual(cards.day_card(self.user, TODAY)['burned'], 2335)
 
     def test_daily_report_over_and_under(self):
         eat(self.user, TODAY, calories=2400)
