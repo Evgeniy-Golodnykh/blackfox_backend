@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import (
 )
 
 from content.views import ArticleViewSet, VideoViewSet
+from questionnaire.views import QuestionnaireViewSet
 from training.views import (
     BodyStatsDiaryViewSet, FoodDiaryViewSet, ProjectViewSet,
 )
@@ -19,6 +20,9 @@ router.register('fooddiary', FoodDiaryViewSet, basename='fooddiary')
 router.register('project', ProjectViewSet, basename='project')
 router.register('articles', ArticleViewSet, basename='article')
 router.register('videos', VideoViewSet, basename='video')
+router.register(
+    'questionnaire', QuestionnaireViewSet, basename='questionnaire'
+)
 
 urlpatterns = [
     path('signup/',

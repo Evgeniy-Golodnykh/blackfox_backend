@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'content',
     'cycles',
     'fatsecret',
+    'questionnaire',
     'users',
     'training',
 ]
@@ -196,6 +197,12 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend'
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # Only views that set throttle_classes use these: the public
+    # questionnaire submit. Behind a proxy it needs the client's IP in
+    # X-Forwarded-For, or everyone shares one limit.
+    'DEFAULT_THROTTLE_RATES': {
+        'questionnaire': os.getenv('QUESTIONNAIRE_THROTTLE_RATE', '5/hour'),
+    },
 }
 
 DJOSER = {
@@ -248,3 +255,12 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
 }
+
+# New questionnaire notification in Telegram (questionnaire/notifications.py).
+# Skipped while not set. Secrets: environment only, never in the repo.
+
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
+
+TELEGRAM_NOTIFY_CHAT_ID = os.getenv('TELEGRAM_NOTIFY_CHAT_ID', '')
+
+APP_BASE_URL = os.getenv('APP_BASE_URL', 'https://www.blackfoxnutrition.ru')
