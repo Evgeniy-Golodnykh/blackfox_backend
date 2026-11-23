@@ -247,9 +247,25 @@ def checkin_reminder(user, date):
     )
 
 
-def evening_reminder(user, date):
+# How often a nudge may repeat while the person hasn't acted on it — a
+# reminder sent every evening reads as nagging and gets the bot muted.
+# Weigh-ins are the main signal: at least every other day, so the nudge
+# comes back each evening until there is one; measurements rest a week.
+REPEAT_AFTER_DAYS = {'measurements': 7}
+MEASUREMENTS_EVERY_DAYS = 21
+WEIGH_IN_EVERY_DAYS = 2
+
+
+def evening_reminder(user, date, last_sent=None):
     """At most one, most useful first: streak > food > weigh-in >
-    measurements."""
+    measurements. last_sent: {kind: date it was last sent}, so a weigh-in
+    or measurements nudge doesn't come back every evening."""
+
+    last_sent = last_sent or {}
+
+    def rested(kind):
+        sent = last_sent.get(kind)
+        return sent is None or (date - sent).days >= REPEAT_AFTER_DAYS[kind]
 
     today = FoodDiary.objects.filter(user=user, date=date).first()
     if not has_food(today):
@@ -276,20 +292,21 @@ def evening_reminder(user, date):
             button=('Открыть день', f'/stats?day={date.isoformat()}'),
         )
 
-    week_ago = date - timedelta(days=7)
-    if not weights_by_date(user, week_ago, date):
+    since = date - timedelta(days=WEIGH_IN_EVERY_DAYS - 1)
+    if not weights_by_date(user, since, date):
         return Message(
             kind='weigh_in',
-            text='Неделю нет взвешиваний. Завтра утром взвесьтесь натощак — '
-                 'так видно настоящую динамику.',
+            text='Два дня без взвешивания. Завтра утром взвесьтесь натощак '
+                 'и внесите вес — так тренер видит настоящую динамику.',
             button=('Внести вес', '/quick-add'),
         )
 
     last = BodyStatsDiary.objects.filter(user=user).order_by('-date').first()
-    if last is None or (date - last.date).days >= 14:
+    due = last is None or (date - last.date).days >= MEASUREMENTS_EVERY_DAYS
+    if due and rested('measurements'):
         return Message(
             kind='measurements',
-            text='Пора обновить замеры: талия, живот, бёдра — раз в две '
+            text='Пора обновить замеры: талия, живот, бёдра — раз в три '
                  'недели видно, как меняется фигура.',
             button=('Внести замеры', '/quick-add'),
         )

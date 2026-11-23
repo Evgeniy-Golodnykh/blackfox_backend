@@ -99,7 +99,10 @@ def due_messages(user, prefs, now, refresh=True):
     if (evening_report or evening_reminder) and refresh and has_project:
         refresh_diary(user)
     if evening_reminder:
-        message = digest.evening_reminder(user, today)
+        last_sent = dict(NotificationLog.objects.filter(
+            user=user, kind__in=digest.REPEAT_AFTER_DAYS,
+        ).order_by('date').values_list('kind', 'date'))
+        message = digest.evening_reminder(user, today, last_sent)
         if message:
             due.append((message, today))
     if evening_report:

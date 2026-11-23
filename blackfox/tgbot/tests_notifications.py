@@ -160,6 +160,45 @@ class DigestTests(TestCase):
                                       waist=80)
         self.assertIsNone(digest.evening_reminder(self.user, TODAY))
 
+    def test_measurements_every_three_weeks_and_not_every_evening(self):
+        eat(self.user, TODAY, weight=81.0)
+        BodyStatsDiary.objects.create(user=self.user,
+                                      date=TODAY - timedelta(days=20),
+                                      waist=80)
+        self.assertIsNone(digest.evening_reminder(self.user, TODAY))
+        BodyStatsDiary.objects.all().update(date=TODAY - timedelta(days=21))
+        self.assertEqual(digest.evening_reminder(self.user, TODAY).kind,
+                         'measurements')
+        # Sent 3 days ago and still not done: wait a week before asking again.
+        recently = {'measurements': TODAY - timedelta(days=3)}
+        self.assertIsNone(digest.evening_reminder(self.user, TODAY, recently))
+        week = {'measurements': TODAY - timedelta(days=7)}
+        self.assertEqual(
+            digest.evening_reminder(self.user, TODAY, week).kind,
+            'measurements')
+
+    def test_weigh_in_at_least_every_other_day(self):
+        BodyStatsDiary.objects.create(user=self.user, date=TODAY, waist=80)
+        eat(self.user, TODAY)
+        eat(self.user, TODAY - timedelta(days=1), weight=81.4)
+        self.assertIsNone(digest.evening_reminder(self.user, TODAY))
+        # Last weigh-in two days ago: remind, and again the next evening.
+        FoodDiary.objects.filter(user=self.user).update(weight_actual=0)
+        eat(self.user, TODAY - timedelta(days=2), weight=81.4)
+        self.assertEqual(digest.evening_reminder(self.user, TODAY).kind,
+                         'weigh_in')
+        sent_yesterday = {'weigh_in': TODAY - timedelta(days=1)}
+        self.assertEqual(
+            digest.evening_reminder(self.user, TODAY, sent_yesterday).kind,
+            'weigh_in')
+
+    def test_checkin_weight_counts(self):
+        BodyStatsDiary.objects.create(user=self.user, date=TODAY, waist=80)
+        eat(self.user, TODAY)
+        DailyCheckin.objects.create(user=self.user, date=TODAY, weight=81.2,
+                                    sleep=3, wellbeing=3, stress=3, hunger=3)
+        self.assertIsNone(digest.evening_reminder(self.user, TODAY))
+
     def test_checkin_reminder_only_without_a_checkin(self):
         self.assertEqual(digest.checkin_reminder(self.user, TODAY).kind,
                          'checkin')
