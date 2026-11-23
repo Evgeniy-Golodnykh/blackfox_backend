@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from checkins.models import DailyCheckin
 from checkins.serializers import CheckinSerializer
-from training.models import Project
+from coaching.access import can_view
 
 User = get_user_model()
 
@@ -20,13 +20,8 @@ not_your_client_message = 'Это не ваш клиент.'
 
 
 def can_read(viewer, username):
-    if viewer.is_admin or viewer.username == username:
-        return True
-    if viewer.is_coach:
-        return Project.objects.filter(
-            coach=viewer, user__username=username,
-        ).exists()
-    return False
+    user = User.objects.filter(username=username).first()
+    return user is not None and can_view(viewer, user)
 
 
 class CheckinsView(APIView):

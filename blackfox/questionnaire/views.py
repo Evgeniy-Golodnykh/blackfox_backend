@@ -6,7 +6,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
+from django.contrib.auth import get_user_model
+
 from api.permissions import IsAdmin
+from questionnaire import flow
 from questionnaire.models import Questionnaire
 from questionnaire.serializers import (
     ClaimSerializer, MyQuestionnaireSerializer, QuestionnaireCreateSerializer,
@@ -18,6 +21,27 @@ invalid_claim_token_message = 'Ссылка на анкету недействи
 not_a_client_message = 'Привязать анкету может только клиент.'
 no_questionnaire_message = 'Анкеты нет.'
 already_linked_message = 'Анкета уже привязана к аккаунту.'
+no_coach_message = 'Такого тренера нет.'
+other_coach_message = ('У клиента уже есть план у другого тренера — '
+                       'сначала смените тренера в проекте.')
+
+User = get_user_model()
+
+
+def invite_link(questionnaire):
+    """A new one-time sign-up link for the application's sender; the
+    previous one stops working."""
+
+    token, token_hash, expires_at = new_claim_token()
+    questionnaire.claim_token_hash = token_hash
+    questionnaire.claim_token_expires_at = expires_at
+    questionnaire.save(update_fields=['claim_token_hash',
+                                      'claim_token_expires_at'])
+    base = settings.APP_BASE_URL.rstrip('/')
+    return {
+        'url': f'{base}/signup?from=invite&claim={token}',
+        'expires_at': expires_at.isoformat(),
+    }
 
 
 class QuestionnaireViewSet(
@@ -33,10 +57,20 @@ class QuestionnaireViewSet(
     claim/mine — the signed-in client's own application.
     """
 
-    queryset = Questionnaire.objects.select_related('user')
+    queryset = Questionnaire.objects.select_related(
+        'user', 'progress', 'progress__coach')
     http_method_names = ['get', 'post', 'patch', 'head', 'options']
     throttle_scope = 'questionnaire'
     pagination_class = None
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action != 'list':
+            return queryset
+        # Closed over 30 days ago: only on request (?archived=1).
+        if self.request.query_params.get('archived'):
+            return queryset.filter(**flow.archived_filter())
+        return queryset.exclude(**flow.archived_filter())
 
     def get_permissions(self):
         if self.action == 'create':
@@ -90,6 +124,8 @@ class QuestionnaireViewSet(
                 {'detail': invalid_claim_token_message},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        questionnaire.refresh_from_db()
+        flow.follow_assigned_coach(questionnaire)
         return Response({'id': questionnaire.pk})
 
     @action(detail=True, methods=['post'])
@@ -104,16 +140,38 @@ class QuestionnaireViewSet(
         if questionnaire.user_id is not None:
             return Response({'detail': already_linked_message},
                             status=status.HTTP_400_BAD_REQUEST)
-        token, token_hash, expires_at = new_claim_token()
-        questionnaire.claim_token_hash = token_hash
-        questionnaire.claim_token_expires_at = expires_at
-        questionnaire.save(update_fields=['claim_token_hash',
-                                          'claim_token_expires_at'])
-        base = settings.APP_BASE_URL.rstrip('/')
-        return Response({
-            'url': f'{base}/signup?from=invite&claim={token}',
-            'expires_at': expires_at.isoformat(),
-        })
+        return Response(invite_link(questionnaire))
+
+    @action(detail=True, methods=['post'])
+    def assign(self, request, pk=None):
+        """Admin: {"coach": "<username>"} — the coach gets the application
+        (and the linked client, if any) and a message in Telegram."""
+
+        questionnaire = self.get_object()
+        coach = User.objects.filter(
+            username=str(request.data.get('coach', '')),
+            role=User.Roles.COACH, is_active=True).first()
+        if coach is None:
+            return Response({'detail': no_coach_message},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            flow.assign_coach(questionnaire, coach)
+        except flow.AssignError:
+            return Response({'detail': other_coach_message},
+                            status=status.HTTP_409_CONFLICT)
+        questionnaire = self.get_queryset().get(pk=questionnaire.pk)
+        return Response(QuestionnaireSerializer(questionnaire).data)
+
+    @action(detail=False, methods=['get'])
+    def funnel(self, request):
+        """Admin: the weekly funnel (received → contacted → coach →
+        active) and the median time to the first response."""
+
+        try:
+            weeks = min(max(int(request.query_params.get('weeks', 8)), 1), 26)
+        except ValueError:
+            weeks = 8
+        return Response(flow.funnel(weeks))
 
     @action(detail=False, methods=['get'])
     def mine(self, request):

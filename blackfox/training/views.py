@@ -1,11 +1,12 @@
 from django.contrib.auth import get_user_model
-from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from api.filters import UniversalUserCoachFilter, UniversalUserFilter
 from api.permissions import IsAdminOrCoach
+from coaching.access import can_view, target_user, visible
 from fatsecret.tools import get_fooddiary_objects
 from training.models import BodyStatsDiary, FoodDiary, Project
 from training.serializers import (
@@ -32,19 +33,11 @@ class BodyStatsDiaryViewSet(viewsets.ModelViewSet):
         return BodyStatsDiarySerializer
 
     def get_queryset(self):
-        queryset = BodyStatsDiary.objects.select_related('user')
-        if self.request.user.is_admin or self.request.user.is_coach:
-            return queryset
-        return queryset.filter(user=self.request.user)
+        return visible(self.request.user,
+                       BodyStatsDiary.objects.select_related('user'))
 
     def perform_create(self, serializer):
-        if self.request.user.is_admin or self.request.user.is_coach:
-            user = get_object_or_404(
-                User, username=self.request.query_params.get('user')
-            )
-        else:
-            user = self.request.user
-        serializer.save(user=user)
+        serializer.save(user=target_user(self.request))
 
 
 class FoodDiaryViewSet(viewsets.ModelViewSet):
@@ -54,18 +47,11 @@ class FoodDiaryViewSet(viewsets.ModelViewSet):
     filterset_class = UniversalUserFilter
 
     def get_queryset(self):
-        queryset = FoodDiary.objects.select_related('user')
-        if self.request.user.is_admin or self.request.user.is_coach:
-            return queryset
-        return queryset.filter(user=self.request.user)
+        return visible(self.request.user,
+                       FoodDiary.objects.select_related('user'))
 
     def create(self, request):
-        if request.user.is_admin or request.user.is_coach:
-            user = get_object_or_404(
-                User, username=request.query_params.get('user')
-            )
-        else:
-            user = request.user
+        user = target_user(request)
         if not user.fatsecret_token or not user.fatsecret_secret:
             return Response(
                 {'message': fatsecret_account_not_exists_message},
@@ -113,3 +99,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if self.request.user.is_coach:
             return queryset.filter(coach=self.request.user)
         return queryset.filter(user=self.request.user)
+
+    def check_coach_rights(self, serializer):
+        """A coach plans only for their own clients and only as themselves;
+        moving a client to another coach is an admin's job."""
+
+        viewer = self.request.user
+        if viewer.is_admin:
+            return
+        data = serializer.validated_data
+        coach = data.get('coach', getattr(serializer.instance, 'coach', None))
+        user = data.get('user', getattr(serializer.instance, 'user', None))
+        if coach != viewer or (user is not None and not can_view(viewer,
+                                                                 user)):
+            raise PermissionDenied('Это не ваш клиент.')
+
+    def perform_create(self, serializer):
+        self.check_coach_rights(serializer)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self.check_coach_rights(serializer)
+        serializer.save()

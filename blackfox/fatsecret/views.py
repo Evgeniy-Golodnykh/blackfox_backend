@@ -1,10 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from coaching.access import target_user
 from fatsecret.tools import (
     CALLBACK_URL, PARAMS_FOOD_DAILY, PARAMS_FOOD_MONTHLY, PARAMS_WEIGHT,
     fatsecret, get_weekly_food_nutrients, unix_date_converter,
@@ -66,12 +66,7 @@ class FatsecretDataView(APIView):
     params = None
 
     def get(self, request):
-        if request.user.is_admin or request.user.is_coach:
-            user = get_object_or_404(
-                User, username=request.query_params.get('user')
-            )
-        else:
-            user = request.user
+        user = target_user(request)
         access_token = user.fatsecret_token
         access_token_secret = user.fatsecret_secret
         if not access_token or not access_token_secret:
@@ -112,12 +107,7 @@ class WeeklyFoodsView(APIView):
     """A view to aggregate weekly foods."""
 
     def get(self, request):
-        if request.user.is_admin or request.user.is_coach:
-            user = get_object_or_404(
-                User, username=request.query_params.get('user')
-            )
-        else:
-            user = request.user
+        user = target_user(request)
         if not user.fatsecret_token or not user.fatsecret_secret:
             return Response(
                 {'message': fatsecret_account_not_exists_message},

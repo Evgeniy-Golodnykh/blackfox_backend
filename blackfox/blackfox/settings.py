@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'activity',
     'api',
     'checkins',
+    'coaching',
     'content',
     'cycles',
     'fatsecret',
