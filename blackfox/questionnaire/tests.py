@@ -175,7 +175,7 @@ class AdminTests(QuestionnaireTestCase):
             {
                 'id', 'version', 'answers', 'created_at', 'status', 'note',
                 'user', 'stage', 'reason', 'coach', 'archived',
-                'stage_changed_at', 'from_telegram',
+                'stage_changed_at', 'from_telegram', 'project',
             },
         )
         self.assertEqual(data[0]['answers'], ANSWERS)
@@ -310,7 +310,7 @@ class NotificationTests(QuestionnaireTestCase):
         self.assertIn('Иван Иванов', text)
         self.assertIn('@ivan', text)
         self.assertIn(
-            f'https://example.test/more/applications/{questionnaire.pk}', text,
+            f'https://example.test/applications/{questionnaire.pk}', text,
         )
         self.assertNotIn('Гастрит', text)
         self.assertNotIn('72,5', text)

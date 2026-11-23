@@ -138,13 +138,14 @@ class QuestionnaireSerializer(serializers.ModelSerializer):
     archived = serializers.SerializerMethodField()
     stage_changed_at = serializers.SerializerMethodField()
     from_telegram = serializers.SerializerMethodField()
+    project = serializers.SerializerMethodField()
 
     class Meta:
         model = Questionnaire
         fields = (
             'id', 'version', 'answers', 'created_at', 'status', 'note', 'user',
             'stage', 'reason', 'coach', 'archived', 'stage_changed_at',
-            'from_telegram',
+            'from_telegram', 'project',
         )
         # `status` — the old three-value field, still writable for older
         # app versions; the stage is what the app shows now.
@@ -183,6 +184,15 @@ class QuestionnaireSerializer(serializers.ModelSerializer):
         progress = flow.getattr_progress(obj)
         changed = progress.stage_changed_at if progress else None
         return changed.isoformat() if changed else None
+
+    def get_project(self, obj):
+        """The linked client's plan, if made: when it started and whose."""
+
+        plan = flow.plan_of(obj)
+        if plan is None:
+            return None
+        return {'start_date': plan.start_date.isoformat(),
+                'coach': person(plan.coach)}
 
     def get_from_telegram(self, obj):
         progress = flow.getattr_progress(obj)

@@ -114,6 +114,21 @@ class StageTests(QuestionnaireTestCase):
         self.assertIsNotNone(application.progress.active_at)
         self.assertEqual(application.status, 'accepted')
 
+    def test_plan_made_before_the_stages_counts_as_active(self, _):
+        application = make_application(user=self.client_user)
+        make_project(self.client_user, self.coach)
+        ApplicationProgress.objects.all().delete()  # as before this table
+        row = self.client.get(f'{URL}{application.pk}/').json()
+        self.assertEqual(row['stage'], 'active')
+        self.assertEqual(row['project']['coach']['username'], 'coach')
+        self.assertEqual(self.client.get(URL).json()[0]['stage'], 'active')
+
+    def test_no_project_field_without_a_plan(self, _):
+        application = make_application(user=self.client_user)
+        row = self.client.get(f'{URL}{application.pk}/').json()
+        self.assertIsNone(row['project'])
+        self.assertEqual(row['stage'], 'new')
+
     def test_sign_up_later_goes_to_the_assigned_coach(self, _):
         application = make_application()
         flow.assign_coach(application, self.coach)
@@ -173,6 +188,18 @@ class CoachApplicationsTests(QuestionnaireTestCase):
                    TELEGRAM_BOT_TOKEN=BOT_TOKEN,
                    APP_BASE_URL='https://app.example.test')
 class ReminderTests(QuestionnaireTestCase):
+
+    @mock.patch('tgbot.telegram_api.send_message', return_value='sent')
+    def test_client_with_a_plan_is_not_nagged_about(self, send):
+        planned = make_application(user=self.client_user, days_ago=2)
+        Project.objects.create(
+            user=self.client_user, coach=self.coach,
+            start_date=date.today(), start_weight=84, target_weight=75,
+            target_calories=2000, target_carbohydrate=200, target_fat=70,
+            target_fiber=25, target_protein=140, target_sugar=50)
+        ApplicationProgress.objects.filter(questionnaire=planned).delete()
+        self.assertEqual(flow.remind_admin(), 0)
+        send.assert_not_called()
 
     @mock.patch('tgbot.telegram_api.send_message', return_value='sent')
     def test_admin_reminded_once_about_day_old_new_ones(self, send):

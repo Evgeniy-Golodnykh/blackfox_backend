@@ -24,7 +24,7 @@ def build_message(questionnaire):
         f'Новая анкета №{questionnaire.pk}\n'
         f'{name}\n'
         f'{contact}\n'
-        f'{base_url}/more/applications/{questionnaire.pk}'
+        f'{base_url}/applications/{questionnaire.pk}'
     )
 
 

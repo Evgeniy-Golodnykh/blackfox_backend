@@ -29,15 +29,35 @@ LEGACY_STATUS = {
 }
 
 
+def plan_of(questionnaire):
+    """The linked client's project, if they have one (select_related
+    'user__project_user' to avoid a query per application)."""
+
+    from django.core.exceptions import ObjectDoesNotExist
+
+    if questionnaire.user_id is None:
+        return None
+    try:
+        return questionnaire.user.project_user
+    except ObjectDoesNotExist:
+        return None
+
+
 def stage_of(questionnaire):
     progress = getattr_progress(questionnaire)
     if progress is not None:
-        return progress.stage
-    # Before this table: the old status is all there is.
-    return {
-        Questionnaire.Status.ACCEPTED: Stage.ACTIVE,
-        Questionnaire.Status.DECLINED: Stage.DECLINED,
-    }.get(questionnaire.status, Stage.NEW)
+        stage = progress.stage
+    else:
+        # Before this table: the old status is all there is.
+        stage = {
+            Questionnaire.Status.ACCEPTED: Stage.ACTIVE,
+            Questionnaire.Status.DECLINED: Stage.DECLINED,
+        }.get(questionnaire.status, Stage.NEW)
+    # The client already has a plan (made before the stages, or while the
+    # application sat elsewhere): they're being led — unless it was closed.
+    if stage not in CLOSED and plan_of(questionnaire) is not None:
+        return Stage.ACTIVE
+    return stage
 
 
 def getattr_progress(questionnaire):
@@ -195,7 +215,7 @@ def stale_new(now=None):
     candidates = Questionnaire.objects.filter(
         created_at__lt=now - ANSWER_WITHIN,
         created_at__gte=now - REMIND_ONLY_WITHIN,
-    ).select_related('progress')
+    ).select_related('progress', 'user__project_user')
     return [q for q in candidates
             if stage_of(q) == Stage.NEW
             and (getattr_progress(q) is None
@@ -217,7 +237,7 @@ def remind_admin(now=None):
     for q in stale[:10]:
         name, contact = applicant(q)
         lines.append(f'\n№{q.pk} · {name} · {contact}\n'
-                     f'{base}/more/applications/{q.pk}')
+                     f'{base}/applications/{q.pk}')
     if len(stale) > 10:
         lines.append(f'\n…и ещё {len(stale) - 10}')
     if send_message(chat_id, '\n'.join(lines)) != SENT:
@@ -246,7 +266,8 @@ def funnel(weeks=8, now=None):
                       'contacted': 0, 'assigned': 0, 'active': 0,
                       'paid': None, 'response_hours': []}
     applications = Questionnaire.objects.filter(
-        created_at__date__gte=start).select_related('progress')
+        created_at__date__gte=start).select_related('progress',
+                                                    'user__project_user')
     for q in applications:
         created = timezone.localdate(q.created_at)
         row = rows.get(created - timedelta(days=created.weekday()))

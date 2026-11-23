@@ -58,7 +58,8 @@ class QuestionnaireViewSet(
     """
 
     queryset = Questionnaire.objects.select_related(
-        'user', 'progress', 'progress__coach')
+        'user', 'user__project_user', 'user__project_user__coach',
+        'progress', 'progress__coach')
     http_method_names = ['get', 'post', 'patch', 'head', 'options']
     throttle_scope = 'questionnaire'
     pagination_class = None
