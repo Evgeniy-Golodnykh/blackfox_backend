@@ -174,7 +174,8 @@ class AdminTests(QuestionnaireTestCase):
             set(data[0]),
             {
                 'id', 'version', 'answers', 'created_at', 'status', 'note',
-                'user',
+                'user', 'stage', 'reason', 'coach', 'archived',
+                'stage_changed_at', 'from_telegram',
             },
         )
         self.assertEqual(data[0]['answers'], ANSWERS)

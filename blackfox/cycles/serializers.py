@@ -6,10 +6,25 @@ from cycles.models import CycleSettings, PeriodEntry, PhaseOverride
 User = get_user_model()
 
 error_user = 'Only female users are allowed'
+error_not_yours = 'Это не ваша клиентка.'
 error_cycle_length_days = 'Cycle length must be greater than 0'
 error_period_length_days = 'Period length must be greater than 0'
 error_length_days = 'Period length cannot be greater than cycle length'
 phase_exists_message = 'A cycle phase for this user and date already exists'
+
+
+def check_owner(serializer, user):
+    """Cycle data is written for oneself, or by a coach for their own
+    client (an admin — for anyone); never for a stranger."""
+
+    from coaching.access import can_view
+
+    request = serializer.context.get('request')
+    if request is None or not can_view(request.user, user):
+        raise serializers.ValidationError(error_not_yours)
+    if not user.is_female:
+        raise serializers.ValidationError(error_user)
+    return user
 
 
 class CycleSettingsSerializer(serializers.ModelSerializer):
@@ -29,9 +44,7 @@ class CycleSettingsSerializer(serializers.ModelSerializer):
         )
 
     def validate_user(self, user):
-        if not user.is_female:
-            raise serializers.ValidationError(error_user)
-        return user
+        return check_owner(self, user)
 
     def validate_cycle_length_days(self, value):
         if value < 1:
@@ -72,9 +85,7 @@ class PeriodEntrySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate_user(self, user):
-        if not user.is_female:
-            raise serializers.ValidationError(error_user)
-        return user
+        return check_owner(self, user)
 
 
 class PhaseOverrideSerializer(serializers.ModelSerializer):
@@ -90,9 +101,7 @@ class PhaseOverrideSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate_user(self, user):
-        if not user.is_female:
-            raise serializers.ValidationError(error_user)
-        return user
+        return check_owner(self, user)
 
     def create(self, validated_data):
         user = validated_data.get('user')

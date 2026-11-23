@@ -54,8 +54,10 @@ class CustomUserSerializer(serializers.ModelSerializer):
         )
 
     def get_coach(self, obj):
-        project = getattr(obj, 'project_user', None)
-        return project.coach.username if project else None
+        from coaching.access import coach_of
+
+        coach = coach_of(obj)
+        return coach.username if coach else None
 
     def get_fatsecret_account(self, obj):
         return bool(obj.fatsecret_token)

@@ -296,9 +296,8 @@ class TelegramWebhookView(APIView):
         ).first()
 
         if command == '/start' and argument.strip():
-            return self.link_by_code(chat['id'], telegram_id,
-                                     sender.get('username', ''),
-                                     argument.strip())
+            return self.start_with(chat['id'], sender, account,
+                                   argument.strip())
         if account is None:
             if command in ('/start', '/stop'):
                 return reply_with(chat['id'], onboarding.welcome())
@@ -322,6 +321,62 @@ class TelegramWebhookView(APIView):
                 return reply_with(chat['id'], onboarding.reports_enabled())
             return reply_with(chat['id'], onboarding.linked(user))
         return reply_with(chat['id'], onboarding.help_text(user))
+
+    def start_with(self, chat_id, sender, account, argument):
+        """`/start <argument>`: a coach's join link or a link code."""
+
+        if argument.startswith('join_'):
+            return self.join_by_link(chat_id, account,
+                                     argument[len('join_'):])
+        return self.link_by_code(chat_id, sender.get('id'),
+                                 sender.get('username', ''), argument)
+
+    def join_by_link(self, chat_id, account, code):
+        """A coach's link opened in the bot: join right away if this
+        Telegram is linked to a client; otherwise open the join page."""
+
+        from coaching.models import CoachInvite
+        from coaching.services import (
+            OtherCoachError, join_coach, notify_coach_of_new_client,
+        )
+
+        invite = CoachInvite.objects.select_related('coach').filter(
+            code=code[:16], coach__is_active=True).first()
+        if invite is None:
+            return reply(chat_id, 'Ссылка тренера недействительна — '
+                                  'попросите у тренера новую.')
+        coach = invite.coach
+        coach_name = ' '.join(
+            part for part in (coach.first_name, coach.last_name) if part
+        ) or coach.username
+        if account is None or account.user.role != User.Roles.USER:
+            return reply(
+                chat_id,
+                f'Вас приглашает тренер {coach_name}. Начните с анкеты — '
+                '3 минуты, по ней тренер составит ваш план. После неё '
+                'создадите аккаунт и будете у тренера.',
+                path=f'/join/{invite.code}', button='Заполнить анкету',
+            )
+        try:
+            new = join_coach(account.user, coach)
+        except OtherCoachError:
+            return reply(chat_id, 'Вы уже занимаетесь с другим тренером. '
+                                  'Чтобы перейти, напишите администратору.')
+        if new:
+            notify_coach_of_new_client(coach, account.user)
+        from questionnaire.models import Questionnaire
+        if not Questionnaire.objects.filter(user=account.user).exists():
+            return reply(
+                chat_id,
+                f'Готово: вы у тренера {coach_name}. Осталась анкета — '
+                'без неё тренер не сможет составить план. Это 3 минуты.',
+                path='/questionnaire', button='Заполнить анкету',
+            )
+        return reply(
+            chat_id,
+            f'Готово: вы у тренера {coach_name}. Он составит план — я '
+            'напишу, когда он будет готов.',
+        )
 
     def link_by_code(self, chat_id, telegram_id, username, code):
         parsed = parse_link_code(code)

@@ -3,6 +3,7 @@ from djoser.views import UserViewSet
 from rest_framework.serializers import ValidationError
 
 from api.filters import UniversalUserCoachFilter
+from coaching.access import visible
 
 User = get_user_model()
 
@@ -15,10 +16,15 @@ class CustomUserViewSet(UserViewSet):
     filterset_class = UniversalUserCoachFilter
 
     def get_queryset(self):
-        return User.objects.select_related(
+        queryset = User.objects.select_related(
             'project_user__coach',
             'coach_profile',
         )
+        if self.action in ('list', 'retrieve'):
+            # Admins see everyone; a coach — their own clients; anyone
+            # else — only themselves. (Coaches for everyone: /api/coaches/.)
+            return visible(self.request.user, queryset, field='pk')
+        return queryset
 
     def perform_destroy(self, instance):
         if instance.role == User.Roles.ADMIN:
