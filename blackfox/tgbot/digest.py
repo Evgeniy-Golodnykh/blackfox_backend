@@ -102,6 +102,24 @@ def signed(value):
     return f'−{num(-value)}' if value < 0 else f'+{num(value)}'
 
 
+def day_comment(user, date):
+    from coaching.comments import comment_on
+
+    comment = comment_on(user, date)
+    return comment.text if comment else None
+
+
+def with_comment(user, date, lines, caption):
+    """Adds the coach's comment on the day to the report's lines; returns
+    the caption, marked when there is one."""
+
+    comment = day_comment(user, date)
+    if not comment:
+        return caption
+    lines += ['', f'💬 Тренер: {comment}']
+    return caption + ' · 💬 комментарий тренера'
+
+
 def daily_report(user, date):
     """The day's numbers against the plan, or None if nothing was logged."""
 
@@ -153,6 +171,8 @@ def daily_report(user, date):
     if burned:
         lines += ['', f'⚡️ Потрачено {num(burned)} ккал · баланс '
                       f'≈ {signed(calories - burned)} (оценка)']
+
+    caption = with_comment(user, date, lines, caption)
 
     return Message(
         kind='daily_report',

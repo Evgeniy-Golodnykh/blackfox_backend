@@ -7,7 +7,9 @@ The contract is in the app repo, docs/telegram-bot-reports.md («Картинк�
 import logging
 from datetime import timedelta
 
-from tgbot.digest import burned_on, diary_by_date, has_food, weights_by_date
+from tgbot.digest import (
+    burned_on, day_comment, diary_by_date, has_food, weights_by_date,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +133,8 @@ def day_card(user, date, with_meals=True):
                                  'calories_actual', 0)}
             for back in range(6, -1, -1)
         ],
-        'note': None,
+        # The coach's comment — the card puts it first.
+        'note': day_comment(user, date),
     }
     burned = burned_on(user, date)
     if burned:

@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -301,3 +302,86 @@ class AttentionView(APIView):
             coach = get_object_or_404(User,
                                       username=request.query_params['coach'])
         return Response(attention_for(coach))
+
+
+def comment_row(comment):
+    from coaching.comments import coach_name
+
+    return {
+        'date': comment.date.isoformat(),
+        'text': comment.text,
+        'coach': coach_name(comment),
+        'updated_at': comment.updated_at.isoformat(),
+    }
+
+
+class DayCommentsView(APIView):
+    """GET /api/day-comments/?user=<username> — the coach's comments on a
+    client's days, last 14 days, newest first. The client reads their own;
+    their coach and admins — theirs."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        from coaching.access import target_user
+        from coaching.comments import oldest_kept
+        from coaching.models import DayComment
+
+        client = target_user(request)
+        comments = DayComment.objects.filter(
+            client=client, date__gte=oldest_kept()).select_related('coach')
+        return Response([comment_row(c) for c in comments])
+
+
+class DayCommentView(APIView):
+    """PUT /api/day-comments/<username>/<date>/ {"text": …} — the coach
+    (or an admin) writes or edits the comment on that day; empty text
+    deletes it. DELETE removes it. Only the last 14 days, not the future."""
+
+    permission_classes = (IsAuthenticated, IsAdminOrCoach)
+
+    def target(self, request, username, date):
+        from datetime import date as date_type
+
+        from coaching.comments import oldest_kept
+
+        client = get_object_or_404(User, username=username,
+                                   role=User.Roles.USER)
+        if not can_view(request.user, client):
+            return None, None, Response(status=status.HTTP_403_FORBIDDEN)
+        try:
+            day = date_type.fromisoformat(date)
+        except ValueError:
+            day = None
+        if day is None or not oldest_kept() <= day <= timezone.localdate():
+            return None, None, Response(
+                {'detail': 'Комментарий можно оставить только к дню за '
+                           'последние две недели.'},
+                status=status.HTTP_400_BAD_REQUEST)
+        return client, day, None
+
+    def put(self, request, username, date):
+        from coaching.comments import deliver_now
+        from coaching.models import DayComment
+
+        client, day, error = self.target(request, username, date)
+        if error:
+            return error
+        text = str(request.data.get('text', '')).strip()[:1000]
+        if not text:
+            DayComment.objects.filter(client=client, date=day).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        comment, _ = DayComment.objects.update_or_create(
+            client=client, date=day,
+            defaults={'text': text, 'coach': request.user})
+        deliver_now(comment)
+        return Response(comment_row(comment))
+
+    def delete(self, request, username, date):
+        from coaching.models import DayComment
+
+        client, day, error = self.target(request, username, date)
+        if error:
+            return error
+        DayComment.objects.filter(client=client, date=day).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

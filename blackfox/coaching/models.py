@@ -86,3 +86,36 @@ class NewClientNotice(models.Model):
 
     def __str__(self):
         return f'{self.client} — {self.sent_at:%d.%m.%Y}'
+
+
+class DayComment(models.Model):
+    """The coach's word on one day of a client — shown in the app and sent
+    with that day's evening report. Kept two weeks, then deleted."""
+
+    client = models.ForeignKey(settings.AUTH_USER_MODEL,
+                               on_delete=models.CASCADE,
+                               related_name='day_comments',
+                               verbose_name='клиент')
+    coach = models.ForeignKey(settings.AUTH_USER_MODEL,
+                              on_delete=models.SET_NULL, null=True,
+                              related_name='day_comments_written',
+                              verbose_name='тренер')
+    date = models.DateField(verbose_name='день')
+    text = models.TextField(max_length=1000, verbose_name='комментарий')
+    created_at = models.DateTimeField(auto_now_add=True,
+                                      verbose_name='создан')
+    updated_at = models.DateTimeField(auto_now=True,
+                                      verbose_name='изменён')
+    # Sent to the client on its own (not inside the evening report).
+    sent_at = models.DateTimeField(null=True, blank=True,
+                                   verbose_name='отправлен отдельно')
+
+    class Meta:
+        verbose_name = 'Комментарий к дню'
+        verbose_name_plural = 'Комментарии к дням'
+        ordering = ['-date']
+        constraints = [models.UniqueConstraint(
+            fields=['client', 'date'], name='unique_day_comment')]
+
+    def __str__(self):
+        return f'{self.client} {self.date:%d.%m.%Y}'

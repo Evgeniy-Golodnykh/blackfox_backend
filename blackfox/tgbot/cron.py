@@ -5,25 +5,34 @@ from tgbot import scheduler
 logger = logging.getLogger(__name__)
 
 
-def send_due_notifications():
-    """Cron, every 10 minutes: reports and reminders that are due, and the
-    admin's nudge about applications left «Новыми» for a day."""
+def housekeeping_jobs():
+    """(name, job) pairs run before the messages; each returns a count."""
 
+    from coaching.comments import purge_old
     from coaching.notices import announce_new_clients
     from questionnaire.flow import remind_admin
 
-    try:
-        reminded = remind_admin()
-        if reminded:
-            logger.info('Admin reminded about %s applications', reminded)
-    except Exception as err:
-        logger.warning('Application reminder failed: %s', type(err).__name__)
-    try:
-        announced = announce_new_clients()
-        if announced:
-            logger.info('Admin told about %s new clients', announced)
-    except Exception as err:
-        logger.warning('New client notice failed: %s', type(err).__name__)
+    return (
+        # The admin's nudge about applications left «Новыми» for a day.
+        ('applications reminded', remind_admin),
+        # Coaches' day comments live two weeks.
+        ('old day comments deleted', purge_old),
+        # Clients who signed up without a questionnaire or a coach.
+        ('new clients announced', announce_new_clients),
+    )
+
+
+def send_due_notifications():
+    """Cron, every 10 minutes: the housekeeping above, then the reports
+    and reminders that are due. One failing job doesn't stop the rest."""
+
+    for name, job in housekeeping_jobs():
+        try:
+            count = job()
+            if count:
+                logger.info('%s: %s', name, count)
+        except Exception as err:
+            logger.warning('%s failed: %s', name, type(err).__name__)
 
     results = scheduler.run()
     if results:
