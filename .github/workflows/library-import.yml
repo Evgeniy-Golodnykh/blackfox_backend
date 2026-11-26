@@ -1,0 +1,44 @@
+name: library import
+
+# Moves library articles from telegra.ph to our server (text into
+# ArticleContent, pictures into media/article_content/). Never runs on its
+# own. Start it with a tag:
+#      git tag library-import-plan-1  && git push origin library-import-plan-1
+#        → dry run: only lists what would be moved
+#      git tag library-import-apply-1 && git push origin library-import-apply-1
+#        → moves them (articles that already have text are left alone)
+# Needs the content.0002_article_content migration applied first.
+
+on:
+  push:
+    tags:
+      - 'library-import-plan-*'
+      - 'library-import-apply-*'
+
+# Never run at the same time as another job on the production server.
+concurrency:
+  group: production-server
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: import telegra.ph articles over ssh
+      uses: appleboy/ssh-action@v1.2.0
+      env:
+        APPLY: ${{ startsWith(github.ref, 'refs/tags/library-import-apply-') }}
+      with:
+        host: ${{ secrets.HOST_IP }}
+        username: ${{ secrets.HOST_USERNAME }}
+        password: ${{ secrets.HOST_PASSWORD }}
+        port: ${{ secrets.HOST_SSH_PORT }}
+        envs: APPLY
+        script: |
+          set -e
+          if [ "$APPLY" = "true" ]; then
+            sudo docker compose exec -T backend python manage.py import_telegraph_articles
+          else
+            sudo docker compose exec -T backend python manage.py import_telegraph_articles --dry-run
+          fi
