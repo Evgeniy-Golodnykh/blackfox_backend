@@ -7,12 +7,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.permissions import IsAdminOrCoach
+from api.permissions import IsAdmin, IsAdminOrCoach
 from coaching.access import can_view, coached_ids
 from coaching.models import CoachClient, CoachInvite, new_code
 from coaching.serializers import PublicCoachSerializer
 from coaching.services import (
-    OtherCoachError, join_coach, notify_coach_of_new_client,
+    OtherCoachError, assign_coach_by_admin, join_coach,
+    notify_coach_of_new_client,
 )
 from questionnaire.models import Questionnaire
 from questionnaire.serializers import MyQuestionnaireSerializer
@@ -244,3 +245,32 @@ class MyApplicationInviteView(APIView):
 
         questionnaire = get_object_or_404(assigned_to(request.user), pk=pk)
         return Response(invite_link(questionnaire))
+
+
+class AssignCoachView(APIView):
+    """POST /api/coach/assign/ {"client": …, "coach": …} — admin: put a
+    client with a coach (also without a questionnaire). The coach is told
+    in Telegram; a client whose plan another coach leads is refused (409).
+    """
+
+    permission_classes = (IsAuthenticated, IsAdmin)
+
+    def post(self, request):
+        client = User.objects.filter(
+            username=str(request.data.get('client', '')),
+            role=User.Roles.USER).first()
+        coach = User.objects.filter(
+            username=str(request.data.get('coach', '')),
+            role=User.Roles.COACH, is_active=True).first()
+        if client is None or coach is None:
+            return Response({'detail': 'Нет такого клиента или тренера.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            changed = assign_coach_by_admin(client, coach)
+        except OtherCoachError:
+            return Response(
+                {'detail': 'План клиента ведёт другой тренер — смените '
+                           'тренера в проекте.'},
+                status=status.HTTP_409_CONFLICT)
+        return Response({'client': client.username, 'coach': coach.username,
+                         'changed': changed})

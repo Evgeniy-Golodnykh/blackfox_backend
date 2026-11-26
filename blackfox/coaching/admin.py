@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from coaching.models import CoachClient, CoachInvite
+from coaching.models import CoachClient, CoachInvite, NewClientNotice
 
 
 @admin.register(CoachClient)
@@ -14,3 +14,9 @@ class CoachClientAdmin(admin.ModelAdmin):
 class CoachInviteAdmin(admin.ModelAdmin):
     list_display = ('coach', 'code', 'created_at')
     raw_id_fields = ('coach',)
+
+
+@admin.register(NewClientNotice)
+class NewClientNoticeAdmin(admin.ModelAdmin):
+    list_display = ('client', 'sent_at')
+    raw_id_fields = ('client',)

@@ -1,7 +1,8 @@
 from django.urls import path
 
 from coaching.views import (
-    ClientQuestionnaireView, CoachesView, InviteCardView, JoinView,
+    AssignCoachView, ClientQuestionnaireView, CoachesView, InviteCardView,
+    JoinView,
     MyApplicationInviteView, MyApplicationsView, MyApplicationView,
     MyClientsView, MyInviteView,
 )
@@ -11,6 +12,7 @@ urlpatterns = [
     path('coach/invite/<str:code>/', InviteCardView.as_view(),
          name='coach-invite-card'),
     path('coach/join/', JoinView.as_view(), name='coach-join'),
+    path('coach/assign/', AssignCoachView.as_view(), name='coach-assign'),
     path('coach/clients/', MyClientsView.as_view(), name='coach-clients'),
     path('coach/clients/<str:username>/questionnaire/',
          ClientQuestionnaireView.as_view(), name='coach-client-questionnaire'),

@@ -65,3 +65,24 @@ class CoachClient(models.Model):
 
     def __str__(self):
         return f'{self.client} → {self.coach}'
+
+
+class NewClientNotice(models.Model):
+    """The admin was told about a client who signed up without a
+    questionnaire and without a coach — once per client."""
+
+    client = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='new_client_notice',
+        verbose_name='клиент',
+    )
+    sent_at = models.DateTimeField(auto_now_add=True,
+                                   verbose_name='отправлено')
+
+    class Meta:
+        verbose_name = 'Уведомление о новом клиенте'
+        verbose_name_plural = 'Уведомления о новых клиентах'
+
+    def __str__(self):
+        return f'{self.client} — {self.sent_at:%d.%m.%Y}'

@@ -9,6 +9,7 @@ def send_due_notifications():
     """Cron, every 10 minutes: reports and reminders that are due, and the
     admin's nudge about applications left «Новыми» for a day."""
 
+    from coaching.notices import announce_new_clients
     from questionnaire.flow import remind_admin
 
     try:
@@ -17,6 +18,12 @@ def send_due_notifications():
             logger.info('Admin reminded about %s applications', reminded)
     except Exception as err:
         logger.warning('Application reminder failed: %s', type(err).__name__)
+    try:
+        announced = announce_new_clients()
+        if announced:
+            logger.info('Admin told about %s new clients', announced)
+    except Exception as err:
+        logger.warning('New client notice failed: %s', type(err).__name__)
 
     results = scheduler.run()
     if results:

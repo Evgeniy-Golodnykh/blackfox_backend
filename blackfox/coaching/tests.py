@@ -325,3 +325,75 @@ class BotJoinTests(APITestCase):
         self.assertEqual(url, f'https://app.example.test/join/'
                               f'{self.invite.code}')
         self.assertFalse(CoachClient.objects.exists())
+
+
+@override_settings(TELEGRAM_NOTIFY_CHAT_ID='-100', TELEGRAM_BOT_TOKEN='1:x',
+                   APP_BASE_URL='https://app.example.test')
+@mock.patch('tgbot.telegram_api.send_message', return_value='sent')
+class NewClientNoticeTests(APITestCase):
+
+    def setUp(self):
+        from datetime import timedelta as td
+        self.fox = make('fox', User.Roles.COACH)
+        self.hour_ago = timezone.now() - td(hours=1)
+
+    def joined(self, name, **extra):
+        user = make(name, **extra)
+        User.objects.filter(pk=user.pk).update(date_joined=self.hour_ago)
+        return user
+
+    def test_admin_told_once_about_a_client_without_anything(self, send):
+        from coaching.notices import announce_new_clients
+        lone = self.joined('lone')
+        with_app = self.joined('withapp')
+        Questionnaire.objects.create(version=2, answers={},
+                                     consent_at=timezone.now(), user=with_app)
+        with_coach = self.joined('withcoach')
+        CoachClient.objects.create(client=with_coach, coach=self.fox)
+        make('fresh')  # signed up a minute ago: the claim may still come
+        inactive = self.joined('inactive')
+        User.objects.filter(pk=inactive.pk).update(is_active=False)
+
+        self.assertEqual(announce_new_clients(), 1)
+        text = send.call_args[0][1]
+        self.assertIn('@lone', text)
+        self.assertIn('/users/lone', text)
+        self.assertEqual(announce_new_clients(), 0)  # only once
+        self.assertTrue(lone.new_client_notice)
+
+
+@mock.patch('coaching.services.notify_coach_of_assigned_client')
+class AdminAssignTests(APITestCase):
+
+    def setUp(self):
+        self.fox = make('fox', User.Roles.COACH)
+        self.wolf = make('wolf', User.Roles.COACH)
+        self.admin = make('boss', User.Roles.ADMIN)
+        self.anna = make('anna')
+
+    def assign(self, client, coach, as_user=None):
+        self.client.force_authenticate(as_user or self.admin)
+        return self.client.post('/api/coach/assign/',
+                                {'client': client, 'coach': coach},
+                                format='json')
+
+    def test_admin_assigns_and_reassigns(self, notify):
+        self.assertTrue(self.assign('anna', 'fox').json()['changed'])
+        notify.assert_called_once_with(self.fox, self.anna)
+        self.assertFalse(self.assign('anna', 'fox').json()['changed'])
+        self.assign('anna', 'wolf')
+        self.assertEqual(CoachClient.objects.get(client=self.anna).coach,
+                         self.wolf)
+        self.client.force_authenticate(self.anna)
+        self.assertEqual(self.client.get('/api/users/me/').json()['coach'],
+                         'wolf')
+
+    def test_refused_when_another_coach_leads_the_plan(self, _):
+        project_for(self.anna, self.wolf)
+        self.assertEqual(self.assign('anna', 'fox').status_code, 409)
+
+    def test_only_admin_and_real_people(self, _):
+        self.assertEqual(self.assign('anna', 'fox', self.fox).status_code,
+                         403)
+        self.assertEqual(self.assign('anna', 'boss').status_code, 400)
+        self.assertEqual(self.assign('nobody', 'fox').status_code, 400)
