@@ -28,6 +28,8 @@ User = get_user_model()
 
 EVENING_REMINDER_AT = dtime(20, 0)
 WEEKLY_AT = dtime(10, 0)
+# «Первые 14 дней»: the day's lesson, after the morning check-in.
+LESSON_AT = dtime(9, 0)
 # A slot missed by more than this (server down) is skipped, not sent at
 # night.
 LATE_LIMIT = timedelta(hours=3)
@@ -70,6 +72,16 @@ def refresh_diary(user):
     sync_activity(user)  # calories burned, for the report's balance line
 
 
+def morning_lesson(user, local, today, sent):
+    """«Первые 14 дней»: today's lesson, once, after 09:00 local."""
+
+    if ('lesson', today) in sent or not is_due(local, LESSON_AT):
+        return []
+    from course.bot import lesson_message
+    message = lesson_message(user, today)
+    return [(message, today)] if message else []
+
+
 def due_messages(user, prefs, now, refresh=True):
     """[(Message, log date)] due for this user right now."""
 
@@ -109,6 +121,8 @@ def due_messages(user, prefs, now, refresh=True):
         message = digest.daily_report(user, today)
         if message:
             due.append((message, today))
+
+    due.extend(morning_lesson(user, local, today, sent))
 
     if (prefs.weekly_report and local.weekday() == 0
             and ('weekly_report', today) not in sent

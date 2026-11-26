@@ -102,6 +102,14 @@ class JoinView(APIView):
         }, 'joined': new})
 
 
+def course_progress(user):
+    from course.progress import progress_of
+
+    progress = progress_of(user)
+    return ({'read': progress[0], 'total': progress[1]}
+            if progress else None)
+
+
 class MyClientsView(APIView):
     """GET /api/coach/clients/ — the coach's clients: with a plan
     ("active") or joined and waiting for one ("waiting"). Newest first.
@@ -135,6 +143,7 @@ class MyClientsView(APIView):
             'status': 'active' if u.pk in with_project else 'waiting',
             'joined_at': joined[u.pk].isoformat() if u.pk in joined else None,
             'questionnaire': questionnaires.get(u.pk),
+            'course': course_progress(u),
         } for u in users]
         rows.sort(key=lambda r: (r['status'] != 'waiting',
                                  r['joined_at'] or ''), reverse=False)

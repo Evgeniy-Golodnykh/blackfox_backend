@@ -37,6 +37,7 @@ urlpatterns = [
     path('checkins/', CheckinsView.as_view(), name='checkins'),
     path('activity/', ActivityView.as_view(), name='activity'),
     path('', include('coaching.urls')),
+    path('', include('course.urls')),
     path('', include('tgbot.urls')),
     path('', include(router.urls)),
 ]
