@@ -283,3 +283,21 @@ class AssignCoachView(APIView):
                 status=status.HTTP_409_CONFLICT)
         return Response({'client': client.username, 'coach': coach.username,
                          'changed': changed})
+
+
+class AttentionView(APIView):
+    """GET /api/coach/attention/ — the coach's clients who need a word
+    today (no food for 3 days, over the calories, weight stalled, bad
+    check-ins, waiting for a plan), most urgent first. An admin may pass
+    ?coach=<username>."""
+
+    permission_classes = (IsAuthenticated, IsAdminOrCoach)
+
+    def get(self, request):
+        from coaching.attention import attention_for
+
+        coach = request.user
+        if request.user.is_admin and request.query_params.get('coach'):
+            coach = get_object_or_404(User,
+                                      username=request.query_params['coach'])
+        return Response(attention_for(coach))
