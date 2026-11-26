@@ -61,6 +61,20 @@ class CourseApiTests(APITestCase):
         started = self.client.post('/api/course/start/').json()
         self.assertTrue(started['enrolled'])
 
+    def test_reading_opens_the_next_one_right_away(self):
+        self.get(self.anna)  # day 1
+        self.assertEqual(self.get(self.anna, '/api/course/lessons/2/')
+                         .status_code, 403)
+        first = self.get(self.anna, '/api/course/lessons/1/').json()
+        self.assertEqual(first['next_day'], 2)
+        self.assertEqual(self.get(self.anna, '/api/course/lessons/2/')
+                         .status_code, 200)
+        self.assertEqual(self.get(self.anna, '/api/course/lessons/4/')
+                         .status_code, 403)  # one at a time
+        overview = self.get(self.anna).json()
+        self.assertTrue(overview['lessons'][2]['unlocked'])  # 3 is next
+        self.assertFalse(overview['lessons'][3]['unlocked'])
+
     def test_one_lesson_a_day_and_reading_marks_it(self):
         self.get(self.anna)
         Enrollment.objects.filter(user=self.anna).update(
@@ -105,12 +119,22 @@ class BotLessonTests(APITestCase):
         Enrollment.objects.create(user=self.anna,
                                   started_on=date.today() - timedelta(days=5))
 
-    def test_todays_lesson_until_read(self):
+    def read(self, *days):
+        for day in days:
+            LessonRead.objects.get_or_create(
+                user=self.anna, lesson=Lesson.objects.get(day=day))
+
+    def test_earliest_unread_lesson_that_is_due(self):
+        # Day 6 of the course, nothing read: lesson 1 first.
         message = lesson_message(self.anna, date.today())
-        self.assertIn('день 6 из 14', message.text)
-        self.assertEqual(message.button, ('Читать урок', '/learn/6'))
-        LessonRead.objects.create(user=self.anna,
-                                  lesson=Lesson.objects.get(day=6))
+        self.assertIn('урок 1 из 14', message.text)
+        self.assertEqual(message.button, ('Читать урок', '/learn/1'))
+        self.read(1, 2, 3)
+        self.assertIn('урок 4 из 14',
+                      lesson_message(self.anna, date.today()).text)
+
+    def test_nothing_when_read_ahead(self):
+        self.read(*range(1, 9))  # day 6, read through 8
         self.assertIsNone(lesson_message(self.anna, date.today()))
 
     def test_nothing_after_the_course_or_when_off(self):

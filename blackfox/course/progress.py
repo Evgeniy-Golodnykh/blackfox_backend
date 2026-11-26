@@ -36,6 +36,18 @@ def published():
     return Lesson.objects.filter(is_published=True).order_by('day')
 
 
+def is_open(day, today_day, read_days):
+    """A lesson opens on its calendar day — or right away once the one
+    before it is read, for those who want to go faster."""
+
+    return day <= today_day or (day - 1) in read_days or day == 1
+
+
+def read_days_of(user):
+    return set(LessonRead.objects.filter(user=user)
+               .values_list('lesson__day', flat=True))
+
+
 def enrollment_for(user, start=False):
     """The client's enrollment; a new client (signed up within 3 days) is
     enrolled on the first visit, anyone else — when they press «Начать»."""
@@ -53,8 +65,7 @@ def enrollment_for(user, start=False):
 
 def overview(user, enrollment):
     lessons = list(published())
-    read = set(LessonRead.objects.filter(user=user)
-               .values_list('lesson__day', flat=True))
+    read = read_days_of(user)
     today_day = (current_day(enrollment, local_today(user))
                  if enrollment else 0)
     return {
@@ -69,7 +80,8 @@ def overview(user, enrollment):
             'day': lesson.day,
             'title': lesson.title,
             'summary': lesson.summary,
-            'unlocked': bool(enrollment) and lesson.day <= today_day,
+            'unlocked': bool(enrollment) and is_open(lesson.day, today_day,
+                                                     read),
             'read': lesson.day in read,
         } for lesson in lessons],
     }
