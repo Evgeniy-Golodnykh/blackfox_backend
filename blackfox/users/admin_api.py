@@ -75,8 +75,19 @@ class AdminUserSerializer(UserValidationMixin, serializers.ModelSerializer):
         return attrs
 
     def update(self, instance, validated_data):
+        from coaching.access import coached_ids
+
         profile = validated_data.pop('coach_profile', None)
+        blocking_coach = (instance.is_coach and instance.is_active
+                          and validated_data.get('is_active') is False)
         instance = super().update(instance, validated_data)
+        if blocking_coach:
+            # A blocked coach's clients are blocked too — the admin hands
+            # them over and unblocks them one by one. Unblocking the coach
+            # doesn't bring them back.
+            self.blocked_clients = User.objects.filter(
+                pk__in=coached_ids(instance), role=User.Roles.USER,
+                is_active=True).update(is_active=False)
         if profile is not None and instance.is_coach:
             CoachProfile.objects.update_or_create(user=instance,
                                                   defaults=profile)
@@ -104,4 +115,6 @@ class AdminUserView(APIView):
             return Response(serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
-        return Response(serializer.data)
+        data = dict(serializer.data)
+        data['blocked_clients'] = getattr(serializer, 'blocked_clients', 0)
+        return Response(data)

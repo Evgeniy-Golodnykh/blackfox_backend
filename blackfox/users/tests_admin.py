@@ -140,3 +140,34 @@ class AdminDoesWhatTheCoachDoesTests(APITestCase):
         for url in ('/api/fooddiary/?user=anna', '/api/bodystats/?user=anna',
                     '/api/checkins/?user=anna', '/api/project/?user=anna'):
             self.assertEqual(self.client.get(url).status_code, 200, url)
+
+
+class BlockCoachTests(APITestCase):
+
+    def test_blocking_a_coach_blocks_their_clients(self):
+        boss = make('boss', User.Roles.ADMIN)
+        fox = make('fox', User.Roles.COACH)
+        wolf = make('wolf', User.Roles.COACH)
+        anna, olga, ivan = make('anna'), make('olga'), make('ivan')
+        project_for(anna, fox)
+        CoachClient.objects.create(client=olga, coach=fox)
+        project_for(ivan, wolf)
+        self.client.force_authenticate(boss)
+
+        response = self.client.patch(URL.format('fox'), {'is_active': False},
+                                     format='json')
+        self.assertEqual(response.json()['blocked_clients'], 2)
+        for user, active in ((fox, False), (anna, False), (olga, False),
+                             (ivan, True), (wolf, True)):
+            user.refresh_from_db()
+            self.assertEqual(user.is_active, active, user.username)
+
+        # Unblocking the coach leaves the clients for the admin.
+        again = self.client.patch(URL.format('fox'), {'is_active': True},
+                                  format='json')
+        self.assertEqual(again.json()['blocked_clients'], 0)
+        anna.refresh_from_db()
+        self.assertFalse(anna.is_active)
+        rows = self.client.get('/api/coach/clients/', {'coach': 'fox'}).json()
+        self.assertEqual({r['username']: r['is_active'] for r in rows},
+                         {'anna': False, 'olga': False})

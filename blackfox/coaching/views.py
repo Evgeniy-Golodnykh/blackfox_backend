@@ -142,6 +142,7 @@ class MyClientsView(APIView):
             'gender': u.gender,
             'fatsecret_account': bool(u.fatsecret_token),
             'status': 'active' if u.pk in with_project else 'waiting',
+            'is_active': u.is_active,
             'joined_at': joined[u.pk].isoformat() if u.pk in joined else None,
             'questionnaire': questionnaires.get(u.pk),
             'course': course_progress(u),
