@@ -1,6 +1,9 @@
 """URLs for API version 1.1"""
 
 from django.urls import include, path
+
+from users.admin_api import AdminUserView
+from users.analytics import AnalyticsView
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (
     TokenObtainPairView, TokenRefreshView,
@@ -36,6 +39,9 @@ urlpatterns = [
     path('cycle/', include('cycles.urls')),
     path('checkins/', CheckinsView.as_view(), name='checkins'),
     path('activity/', ActivityView.as_view(), name='activity'),
+    path('admin/analytics/', AnalyticsView.as_view(), name='admin-analytics'),
+    path('admin/users/<str:username>/', AdminUserView.as_view(),
+         name='admin-user'),
     path('', include('coaching.urls')),
     path('', include('course.urls')),
     path('', include('tgbot.urls')),

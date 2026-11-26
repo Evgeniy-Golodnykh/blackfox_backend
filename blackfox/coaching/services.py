@@ -69,17 +69,21 @@ def notify_coach_of_assigned_client(coach, client):
     onboarding.send_later(coach, build)
 
 
-def assign_coach_by_admin(client, coach):
+def assign_coach_by_admin(client, coach, with_plan=False):
     """Admin: put a client with a coach (no questionnaire needed). A client
-    whose plan is led by another coach is refused — change it in the plan.
-    Returns True if the coach changed."""
+    whose plan another coach leads is refused — unless `with_plan`: then
+    the plan goes to the new coach too. Returns True if the coach changed."""
 
     from training.models import Project
 
     with transaction.atomic():
-        project = Project.objects.filter(user=client).first()
+        project = Project.objects.select_for_update().filter(
+            user=client).first()
         if project is not None and project.coach_id != coach.pk:
-            raise OtherCoachError
+            if not with_plan:
+                raise OtherCoachError
+            project.coach = coach
+            project.save(update_fields=['coach'])
         link = CoachClient.objects.select_for_update().filter(
             client=client).first()
         if link is not None and link.coach_id == coach.pk:

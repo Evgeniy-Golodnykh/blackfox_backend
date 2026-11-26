@@ -275,8 +275,9 @@ class AssignCoachView(APIView):
         if client is None or coach is None:
             return Response({'detail': 'Нет такого клиента или тренера.'},
                             status=status.HTTP_400_BAD_REQUEST)
+        with_plan = bool(request.data.get('with_plan'))
         try:
-            changed = assign_coach_by_admin(client, coach)
+            changed = assign_coach_by_admin(client, coach, with_plan)
         except OtherCoachError:
             return Response(
                 {'detail': 'План клиента ведёт другой тренер — смените '
