@@ -1,0 +1,57 @@
+name: set up daily database backups
+
+# Puts a backup script on the server and a daily cron line for it
+# (03:30 server time), keeps the last 14 daily dumps, and makes one right
+# away to prove it works. Started by a tag: backup-setup-<n>. Running it
+# again just rewrites the script and the cron line (no duplicates).
+#
+# Dumps: ~/db_backups/daily_<date>.dump (pg_dump custom format — restore
+# with pg_restore). The dumps made before migrations (blackfox_*.dump)
+# are left alone. Only file names and sizes are printed: the log is
+# public, the data never is.
+
+on:
+  push:
+    tags:
+      - 'backup-setup-*'
+
+concurrency:
+  group: production-server
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: encode the script
+      id: script
+      run: echo "b64=$(base64 -w0 infra/backup/bfn_backup.sh)" >> "$GITHUB_OUTPUT"
+
+    - name: install over ssh and make the first backup
+      uses: appleboy/ssh-action@v1.2.0
+      env:
+        SCRIPT_B64: ${{ steps.script.outputs.b64 }}
+      with:
+        host: ${{ secrets.HOST_IP }}
+        username: ${{ secrets.HOST_USERNAME }}
+        password: ${{ secrets.HOST_PASSWORD }}
+        port: ${{ secrets.HOST_SSH_PORT }}
+        envs: SCRIPT_B64
+        script: |
+          set -e
+          mkdir -p ~/db_backups
+          echo "$SCRIPT_B64" | base64 -d > ~/bfn_backup.sh
+          chmod 700 ~/bfn_backup.sh
+          # The compose project lives in the home directory (as for the
+          # deploy); cron starts with a bare PATH, hence the full paths.
+          LINE="30 3 * * * cd $HOME && /bin/sh $HOME/bfn_backup.sh >> $HOME/db_backups/backup.log 2>&1"
+          ( crontab -l 2>/dev/null | grep -v 'bfn_backup.sh' ; echo "$LINE" ) | crontab -
+          echo "== Cron =="
+          crontab -l | grep bfn_backup.sh
+          echo "== First backup =="
+          cd "$HOME" && /bin/sh "$HOME/bfn_backup.sh"
+          echo "== Daily dumps =="
+          ls -lh ~/db_backups/daily_*.dump | awk '{print $5, $9}'
+          df -h "$HOME" | tail -n 1 | awk '{print "free on disk:", $4}'

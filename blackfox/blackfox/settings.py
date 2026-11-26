@@ -28,9 +28,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'NO_SECRET')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-
-DEBUG = True
+# Off unless DEBUG=True is set (a local machine): with it on, an error
+# page shows the internals and every API route to anyone.
+DEBUG = os.getenv('DEBUG', 'False').strip().lower() in ('1', 'true', 'yes')
 
 ALLOWED_HOSTS = [os.getenv('ALLOWED_HOSTS'), '127.0.0.1', 'localhost']
 
@@ -295,3 +295,25 @@ TELEGRAM_WEBHOOK_URL = os.getenv(
     'TELEGRAM_WEBHOOK_URL',
     'https://www.blackfoxnutrition.ru/api/telegram/webhook/',
 )
+
+
+# Errors (500 tracebacks) and the apps' own messages go to the container's
+# log — with DEBUG off, Django's default config would drop them.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'plain': {'format': '%(asctime)s %(levelname)s %(name)s: %(message)s'},
+    },
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'plain'},
+    },
+    'root': {'handlers': ['console'], 'level': 'INFO'},
+    'loggers': {
+        'django': {'handlers': ['console'], 'level': 'WARNING',
+                   'propagate': False},
+        # 500s with tracebacks; not every 404 from scanners.
+        'django.request': {'handlers': ['console'], 'level': 'ERROR',
+                           'propagate': False},
+    },
+}
