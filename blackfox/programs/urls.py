@@ -1,11 +1,12 @@
 from django.urls import path
 
 from programs.admin_api import (
-    AdminDayView, AdminDaysView, AdminProgramsView, AdminProgramView,
+    AdminDayView, AdminDaysView, AdminImportView, AdminProgramsView,
+    AdminProgramView,
 )
 from programs.views import (
-    DiaryView, MyProgramsView, ProgramDayView, ProgramView,
-    StartProgramView,
+    DiaryView, MyProgramsView, ProgramCatalogView, ProgramDayView,
+    ProgramView, StartProgramView,
 )
 
 urlpatterns = [
@@ -17,7 +18,11 @@ urlpatterns = [
          name='admin-program-days'),
     path('admin/programs/<slug:slug>/days/<int:day>/',
          AdminDayView.as_view(), name='admin-program-day'),
+    path('admin/programs/<slug:slug>/import/', AdminImportView.as_view(),
+         name='admin-program-import'),
     path('programs/', MyProgramsView.as_view(), name='programs'),
+    path('programs/catalog/', ProgramCatalogView.as_view(),
+         name='programs-catalog'),
     path('programs/<slug:slug>/', ProgramView.as_view(), name='program'),
     path('programs/<slug:slug>/start/', StartProgramView.as_view(),
          name='program-start'),

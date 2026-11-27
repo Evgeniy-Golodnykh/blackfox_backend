@@ -232,3 +232,65 @@ class AdminProgramsApiTests(APITestCase):
             '/api/admin/programs/hyrox/days/',
             {'day': 1, 'title': 'x', 'base': 'x'}, format='json',
         ).status_code, 403)
+
+
+class ImportAndPriceTests(APITestCase):
+
+    def setUp(self):
+        boss = make('boss')
+        boss.role = User.Roles.ADMIN
+        boss.save()
+        self.client.force_authenticate(boss)
+        self.url = '/api/admin/programs/hyrox/'
+        self.program = TrainingProgram.objects.get(slug='hyrox')
+
+    def days(self, *numbers):
+        return [{'day': n, 'title': f'Тема {n}', 'base': f'База {n}',
+                 'easy': '', 'hard': f'Сложно {n}'} for n in numbers]
+
+    def test_upload_adds_and_rewrites(self):
+        ProgramDay.objects.create(program=self.program, day=1,
+                                  title='Старое', base='старое')
+        data = self.client.post(self.url + 'import/',
+                                {'days': self.days(1, 3, 5)},
+                                format='json').json()
+        self.assertEqual((data['created'], data['updated'], data['deleted']),
+                         (2, 1, 0))
+        self.assertEqual(ProgramDay.objects.get(day=1).title, 'Тема 1')
+        self.assertEqual(ProgramDay.objects.get(day=5).hard, 'Сложно 5')
+
+    def test_replace_drops_the_rest_and_bad_uploads_change_nothing(self):
+        self.client.post(self.url + 'import/', {'days': self.days(1, 2, 3)},
+                         format='json')
+        data = self.client.post(self.url + 'import/',
+                                {'days': self.days(2), 'replace': True},
+                                format='json').json()
+        self.assertEqual(data['deleted'], 2)
+        self.assertEqual(
+            list(ProgramDay.objects.values_list('day', flat=True)), [2])
+        twice = self.client.post(self.url + 'import/',
+                                 {'days': self.days(4, 4), 'replace': True},
+                                 format='json')
+        self.assertEqual(twice.status_code, 400)
+        empty_base = self.days(6)
+        empty_base[0]['base'] = ''
+        self.assertEqual(self.client.post(
+            self.url + 'import/', {'days': empty_base},
+            format='json').status_code, 400)
+        self.assertEqual(
+            list(ProgramDay.objects.values_list('day', flat=True)), [2])
+
+    def test_price_set_in_the_app_and_shown_in_the_shop(self):
+        self.assertIsNone(self.client.get(self.url).json()['price'])
+        self.assertEqual(self.client.patch(self.url, {'price': 'abc'},
+                                           format='json').status_code, 400)
+        self.assertEqual(self.client.patch(
+            self.url, {'price': 2490}, format='json').json()['price'], 2490)
+        self.client.force_authenticate(make('anna'))
+        catalog = {row['program']: row for row in
+                   self.client.get('/api/programs/catalog/').json()}
+        self.assertEqual(catalog['hyrox']['price'], 2490)
+        self.assertIsNone(catalog['running']['price'])
+        self.assertEqual(self.client.post(
+            self.url + 'import/', {'days': self.days(1)},
+            format='json').status_code, 403)

@@ -1,7 +1,8 @@
 from django.contrib import admin
 
 from programs.models import (
-    ProgramDay, ProgramEnrollment, TrainingProgram, WorkoutLog,
+    ProgramDay, ProgramEnrollment, ProgramPrice, TrainingProgram,
+    WorkoutLog,
 )
 
 
@@ -42,3 +43,8 @@ class WorkoutLogAdmin(admin.ModelAdmin):
     list_display = ('user', 'day', 'level', 'done_on', 'feel')
     list_filter = ('day__program',)
     raw_id_fields = ('user',)
+
+
+@admin.register(ProgramPrice)
+class ProgramPriceAdmin(admin.ModelAdmin):
+    list_display = ('program', 'rubles', 'updated_at')

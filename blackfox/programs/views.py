@@ -211,3 +211,21 @@ class DiaryView(APIView):
             'title': log.day.title,
             **log_data(log),
         } for log in logs])
+
+
+class ProgramCatalogView(APIView):
+    """GET /api/programs/catalog/ — what the shop shows from the server:
+    each program's price and whether it can be started."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        from programs.models import ProgramPrice
+
+        prices = dict(ProgramPrice.objects.values_list('program__slug',
+                                                       'rubles'))
+        return Response([{
+            'program': p.slug,
+            'price': prices.get(p.slug),
+            'is_published': p.is_published,
+        } for p in TrainingProgram.objects.all()])

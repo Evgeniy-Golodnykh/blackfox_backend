@@ -124,3 +124,25 @@ class WorkoutLog(models.Model):
 
     def __str__(self):
         return f'{self.user} · {self.day}'
+
+
+class ProgramPrice(models.Model):
+    """What 30 days of a program cost, set by the admin in the app (a
+    table of its own, so the programs table stays as it is)."""
+
+    program = models.OneToOneField(TrainingProgram,
+                                   on_delete=models.CASCADE,
+                                   related_name='price',
+                                   verbose_name='программа')
+    rubles = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name='цена за 30 дней, ₽',
+        help_text='Пусто — «Цена скоро».')
+    updated_at = models.DateTimeField(auto_now=True,
+                                      verbose_name='изменено')
+
+    class Meta:
+        verbose_name = 'Цена программы'
+        verbose_name_plural = 'Цены программ'
+
+    def __str__(self):
+        return f'{self.program}: {self.rubles or "—"} ₽'
