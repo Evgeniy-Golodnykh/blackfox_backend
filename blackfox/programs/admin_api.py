@@ -1,6 +1,8 @@
 """The admin writes the programs in the app: their days (topic and the
 easy / base / hard versions) and whether the program is open."""
 
+from datetime import date, timedelta
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status
@@ -9,7 +11,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.permissions import IsAdmin
-from programs.models import ProgramDay, ProgramPrice, TrainingProgram
+from programs.models import (
+    ProgramDay, ProgramPrice, ProgramSchedule, TrainingProgram,
+)
 
 
 class DaySerializer(serializers.ModelSerializer):
@@ -33,14 +37,33 @@ def price_of(program):
     return row.rubles if row else None
 
 
+def schedule_for(program):
+    schedule, _ = ProgramSchedule.objects.get_or_create(program=program)
+    return schedule
+
+
 def program_data(program):
+    schedule = schedule_for(program)
+    calendar = schedule.mode == ProgramSchedule.Mode.CALENDAR
+    starts = schedule.starts_on if calendar else None
+    days = list(program.days.all())
+
+    def when(day):
+        return starts + timedelta(days=day - 1) if starts else None
+
     return {
         'slug': program.slug,
         'title': program.title,
         'is_published': program.is_published,
         'price': price_of(program),
-        'days': [{'day': d.day, 'title': d.title}
-                 for d in program.days.all()],
+        'mode': schedule.mode,
+        'starts_on': schedule.starts_on,
+        # Calendar: the program's day number today and the last date with
+        # a workout written.
+        'today_day': ((date.today() - starts).days + 1) if starts else None,
+        'scheduled_until': when(days[-1].day) if days and starts else None,
+        'days': [{'day': d.day, 'title': d.title, 'date': when(d.day)}
+                 for d in days],
         'clients': program.enrollments.count(),
     }
 
@@ -66,27 +89,53 @@ class AdminProgramView(APIView):
 
     def patch(self, request, slug):
         program = get_object_or_404(TrainingProgram, slug=slug)
+        schedule = schedule_for(program)
+        errors = {}
+        apply_schedule(schedule, request.data, errors)
         if 'is_published' in request.data:
             program.is_published = bool(request.data['is_published'])
+        if (program.is_published
+                and schedule.mode == ProgramSchedule.Mode.CALENDAR
+                and not schedule.starts_on):
+            errors['starts_on'] = ['Для сквозной программы нужна дата '
+                                   'первого дня.']
         if str(request.data.get('title', '')).strip():
             program.title = str(request.data['title']).strip()[:120]
+        price = parse_price(request.data, errors)
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
         if 'price' in request.data:
-            price = request.data['price']
-            if price in (None, ''):
-                price = None
-            else:
-                try:
-                    price = int(price)
-                except (TypeError, ValueError):
-                    price = -1
-                if not 0 < price <= 1_000_000:
-                    return Response(
-                        {'price': ['Цена — целое число рублей от 1.']},
-                        status=status.HTTP_400_BAD_REQUEST)
             ProgramPrice.objects.update_or_create(
                 program=program, defaults={'rubles': price})
+        schedule.save()
         program.save()
         return Response(program_data(program))
+
+
+def apply_schedule(schedule, data, errors):
+    if data.get('mode') in ProgramSchedule.Mode.values:
+        schedule.mode = data['mode']
+    if 'starts_on' in data:
+        raw = data['starts_on']
+        try:
+            schedule.starts_on = date.fromisoformat(raw) if raw else None
+        except (TypeError, ValueError):
+            errors['starts_on'] = ['Дата в формате ГГГГ-ММ-ДД.']
+
+
+def parse_price(data, errors):
+    """Rubles from data['price'] (None — not set), or an error."""
+
+    price = data.get('price')
+    if price in (None, ''):
+        return None
+    try:
+        price = int(price)
+    except (TypeError, ValueError):
+        price = -1
+    if not 0 < price <= 1_000_000:
+        errors['price'] = ['Цена — целое число рублей от 1.']
+    return price
 
 
 class AdminDaysView(APIView):

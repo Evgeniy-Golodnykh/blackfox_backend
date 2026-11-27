@@ -146,3 +146,35 @@ class ProgramPrice(models.Model):
 
     def __str__(self):
         return f'{self.program}: {self.rubles or "—"} ₽'
+
+
+class ProgramSchedule(models.Model):
+    """How a program runs (a table of its own, so the programs table stays
+    as it is). «calendar» — one stream for everyone: day 1 is `starts_on`,
+    today's workout is the same for all, a client joins at today's day.
+    «personal» — each client starts at day 1 on the day they start."""
+
+    class Mode(models.TextChoices):
+        CALENDAR = 'calendar', 'сквозная (по календарю)'
+        PERSONAL = 'personal', 'с первого дня'
+
+    program = models.OneToOneField(TrainingProgram,
+                                   on_delete=models.CASCADE,
+                                   related_name='schedule',
+                                   verbose_name='программа')
+    mode = models.CharField(max_length=8, choices=Mode.choices,
+                            default=Mode.CALENDAR, verbose_name='режим')
+    starts_on = models.DateField(
+        null=True, blank=True, verbose_name='день 1',
+        help_text='Для сквозной программы: дата первого дня.')
+    gap_alerted_on = models.DateField(
+        null=True, blank=True, verbose_name='предупреждали о конце',
+        help_text='Когда последний раз писали, что тренировки '
+                  'заканчиваются.')
+
+    class Meta:
+        verbose_name = 'Расписание программы'
+        verbose_name_plural = 'Расписания программ'
+
+    def __str__(self):
+        return f'{self.program}: {self.get_mode_display()}'

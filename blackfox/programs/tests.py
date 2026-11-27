@@ -5,7 +5,8 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
 from programs.models import (
-    ProgramDay, ProgramEnrollment, TrainingProgram, WorkoutLog,
+    ProgramDay, ProgramEnrollment, ProgramSchedule, TrainingProgram,
+    WorkoutLog,
 )
 
 User = get_user_model()
@@ -216,10 +217,15 @@ class AdminProgramsApiTests(APITestCase):
                         format='json')
         row = ProgramDay.objects.get()
         self.assertEqual((row.day, row.easy), (2, 'Легче'))
-        data = self.client.patch(url, {'is_published': True},
+        closed = self.client.patch(url, {'is_published': True},
+                                   format='json')
+        self.assertEqual(closed.status_code, 400)  # calendar needs a date
+        data = self.client.patch(url, {'is_published': True,
+                                       'starts_on': '2026-12-01'},
                                  format='json').json()
         self.assertTrue(data['is_published'])
-        self.assertEqual(data['days'], [{'day': 2, 'title': 'Бег и станции'}])
+        self.assertEqual(data['days'], [{'day': 2, 'title': 'Бег и станции',
+                                         'date': '2026-12-02'}])
         listed = self.client.get('/api/admin/programs/').json()
         self.assertEqual(len(listed), 4)
         self.assertEqual(self.client.delete(url + 'days/2/').status_code, 204)
@@ -294,3 +300,75 @@ class ImportAndPriceTests(APITestCase):
         self.assertEqual(self.client.post(
             self.url + 'import/', {'days': self.days(1)},
             format='json').status_code, 403)
+
+
+class CalendarProgramTests(APITestCase):
+    """One stream for everyone: day 1 is the program's start date."""
+
+    def setUp(self):
+        self.program = TrainingProgram.objects.get(slug='hyrox')
+        self.program.is_published = True
+        self.program.save()
+        ProgramSchedule.objects.filter(program=self.program).update(
+            mode='calendar', starts_on=START)
+        for day in (1, 3, 10, 12, 20):
+            ProgramDay.objects.create(program=self.program, day=day,
+                                      title=f'День {day}', base='x')
+        self.anna = make('anna')
+        self.client.force_authenticate(self.anna)
+
+    def test_joining_mid_stream_starts_at_todays_day(self):
+        with on(10):  # anna joins on the program's 10th day
+            data = self.client.post('/api/programs/hyrox/start/').json()
+        self.assertEqual(data['mode'], 'calendar')
+        self.assertEqual(data['current_day'], 10)
+        self.assertEqual(data['today']['day'], 10)
+        self.assertEqual([d['day'] for d in data['days']], [10, 12, 20])
+        self.assertEqual(data['trial_left'], 7)
+        with on(10):
+            self.assertEqual(self.client.get(
+                '/api/programs/hyrox/days/3/').json()['state'], 'before')
+        # The free week runs from joining: day 16 is its last day.
+        with on(16):
+            data = self.client.get('/api/programs/hyrox/').json()
+            self.assertEqual(data['trial_left'], 1)
+            self.assertEqual(data['days'][1]['state'], 'open')  # day 12
+        with on(20):
+            data = self.client.get('/api/programs/hyrox/').json()
+            self.assertEqual(data['today']['state'], 'paywall')
+            self.assertEqual(data['trial_left'], 0)
+
+    def test_two_clients_share_the_day(self):
+        olga = make('olga')
+        with on(3):
+            self.client.post('/api/programs/hyrox/start/')
+            self.client.force_authenticate(olga)
+            self.client.post('/api/programs/hyrox/start/')
+        with on(12):
+            a = ProgramEnrollment.objects.get(user=self.anna)
+            o = ProgramEnrollment.objects.get(user=olga)
+            from programs.access import current_day
+            self.assertEqual(current_day(a, START + timedelta(days=11)), 12)
+            self.assertEqual(current_day(o, START + timedelta(days=11)), 12)
+
+    def test_joining_before_the_start(self):
+        with on(-4):  # five days before day 1
+            data = self.client.post('/api/programs/hyrox/start/').json()
+        self.assertIsNone(data['today'])
+        self.assertEqual(data['current_day'], -4)
+        self.assertEqual(data['next_day'], 1)
+        with on(7):  # the free week counts from day 1
+            self.assertEqual(self.client.get(
+                '/api/programs/hyrox/').json()['trial_left'], 1)
+
+    def test_admin_is_told_when_workouts_run_out(self):
+        from programs.alerts import alert_schedule_gaps
+        with self.settings(TELEGRAM_NOTIFY_CHAT_ID='1'), mock.patch(
+                'tgbot.telegram_api.send_message',
+                return_value='sent') as send:
+            # Day 20 is START+19: plenty left on day 1.
+            self.assertEqual(alert_schedule_gaps(START), 0)
+            today = START + timedelta(days=16)
+            self.assertEqual(alert_schedule_gaps(today), 1)
+            self.assertIn('расписаны до', send.call_args[0][1])
+            self.assertEqual(alert_schedule_gaps(today), 0)  # once a day

@@ -6,7 +6,8 @@ from rest_framework.views import APIView
 
 from course.progress import local_today
 from programs.access import (
-    TRIAL_DAYS, current_day, day_state, has_paid,
+    TRIAL_DAYS, current_day, day_date, day_state, first_day, has_paid,
+    is_calendar, origin, trial_end, trial_left,
 )
 from programs.models import (
     ProgramDay, ProgramEnrollment, TrainingProgram, WorkoutLog,
@@ -16,6 +17,7 @@ not_started_message = 'Программа ещё не начата.'
 not_open_message = 'Эта программа скоро откроется.'
 STATE_MESSAGES = {
     'later': 'Эта тренировка откроется в свой день.',
+    'before': 'Эта тренировка была до того, как вы подключились.',
     'paywall': 'Бесплатная неделя закончилась — оформите подписку, '
                'чтобы продолжить.',
 }
@@ -35,7 +37,8 @@ def log_data(log):
 
 def overview(enrollment, today):
     program = enrollment.program
-    days = list(program.days.all())
+    first = first_day(enrollment)
+    days = [d for d in program.days.all() if d.day >= first]
     logs = {log.day_id: log for log in WorkoutLog.objects.filter(
         user=enrollment.user, day__program=program)}
     now = current_day(enrollment, today)
@@ -44,13 +47,18 @@ def overview(enrollment, today):
     return {
         'program': program.slug,
         'title': program.title,
+        'mode': 'calendar' if is_calendar(program) else 'personal',
+        # The date of day 1 (the program's for a calendar one).
+        'starts_on': origin(enrollment),
         'started_on': enrollment.started_on,
         'current_day': now,
         'trial_days': TRIAL_DAYS,
+        'trial_ends_on': trial_end(enrollment),
+        'trial_left': trial_left(enrollment, today),
         'paid': has_paid(enrollment, today),
         'paid_until': enrollment.paid_until,
         'total_days': days[-1].day if days else 0,
-        # None — a rest day (or the program is over).
+        # None — a rest day (or nothing written yet, or not started yet).
         'today': (None if today_row is None else {
             'day': today_row.day,
             'title': today_row.title,
@@ -58,19 +66,22 @@ def overview(enrollment, today):
             'done': today_row.pk in logs,
         }),
         'next_day': upcoming.day if upcoming else None,
+        'next_date': day_date(enrollment, upcoming.day) if upcoming else None,
         'days': [{
             'day': d.day,
+            'date': day_date(enrollment, d.day),
             'title': d.title,
             'state': day_state(d.day, enrollment, today),
             'done': d.pk in logs,
             'level': logs[d.pk].level if d.pk in logs else None,
         } for d in days],
-        'done_count': len(logs),
+        'done_count': len([d for d in days if d.pk in logs]),
     }
 
 
 def enrollment_of(user, slug):
-    return (ProgramEnrollment.objects.select_related('program')
+    return (ProgramEnrollment.objects
+            .select_related('program', 'program__schedule')
             .filter(user=user, program__slug=slug).first())
 
 

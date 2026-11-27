@@ -1,8 +1,8 @@
 from django.contrib import admin
 
 from programs.models import (
-    ProgramDay, ProgramEnrollment, ProgramPrice, TrainingProgram,
-    WorkoutLog,
+    ProgramDay, ProgramEnrollment, ProgramPrice, ProgramSchedule,
+    TrainingProgram, WorkoutLog,
 )
 
 
@@ -48,3 +48,8 @@ class WorkoutLogAdmin(admin.ModelAdmin):
 @admin.register(ProgramPrice)
 class ProgramPriceAdmin(admin.ModelAdmin):
     list_display = ('program', 'rubles', 'updated_at')
+
+
+@admin.register(ProgramSchedule)
+class ProgramScheduleAdmin(admin.ModelAdmin):
+    list_display = ('program', 'mode', 'starts_on', 'gap_alerted_on')

@@ -10,6 +10,7 @@ def housekeeping_jobs():
 
     from coaching.comments import purge_old
     from coaching.notices import announce_new_clients
+    from programs.alerts import alert_schedule_gaps
     from questionnaire.flow import remind_admin
 
     return (
@@ -19,6 +20,8 @@ def housekeeping_jobs():
         ('old day comments deleted', purge_old),
         # Clients who signed up without a questionnaire or a coach.
         ('new clients announced', announce_new_clients),
+        # Calendar programs about to run out of written workouts.
+        ('program gaps alerted', alert_schedule_gaps),
     )
 
 

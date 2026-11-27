@@ -12,7 +12,8 @@ def workout_message(user, local_date):
 
     from tgbot.digest import Message
 
-    enrollments = (ProgramEnrollment.objects.select_related('program')
+    enrollments = (ProgramEnrollment.objects
+                   .select_related('program', 'program__schedule')
                    .filter(user=user, program__is_published=True)
                    .order_by('-started_on'))
     for enrollment in enrollments:
