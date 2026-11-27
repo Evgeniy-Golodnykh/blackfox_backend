@@ -44,6 +44,7 @@ urlpatterns = [
          name='admin-user'),
     path('', include('coaching.urls')),
     path('', include('course.urls')),
+    path('', include('programs.urls')),
     path('', include('tgbot.urls')),
     path('', include(router.urls)),
 ]

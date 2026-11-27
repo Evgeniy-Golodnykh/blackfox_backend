@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'content',
     'cycles',
     'fatsecret',
+    'programs',
     'questionnaire',
     'tgbot',
     'users',
