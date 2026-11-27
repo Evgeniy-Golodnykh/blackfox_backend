@@ -151,3 +151,84 @@ class ProgramApiTests(APITestCase):
             data = self.client.post('/api/programs/hyrox/start/').json()
         self.assertEqual(data['started_on'], START.isoformat())
         self.assertEqual(data['current_day'], 5)
+
+
+class WorkoutReminderTests(APITestCase):
+
+    def setUp(self):
+        self.program = TrainingProgram.objects.get(slug='hyrox')
+        self.program.is_published = True
+        self.program.save()
+        for day in (1, 3, 8):
+            ProgramDay.objects.create(program=self.program, day=day,
+                                      title=f'День {day}', base='x')
+        self.anna = make('anna')
+        ProgramEnrollment.objects.create(user=self.anna,
+                                         program=self.program,
+                                         started_on=START)
+
+    def message(self, day):
+        from programs.bot import workout_message
+        return workout_message(self.anna, START + timedelta(days=day - 1))
+
+    def test_today_open_and_not_done(self):
+        message = self.message(1)
+        self.assertEqual(message.kind, 'workout')
+        self.assertIn('Hyrox · день 1', message.text)
+        self.assertEqual(message.button,
+                         ('Открыть тренировку',
+                          '/more/online-programs/hyrox/hyrox/days/1'))
+
+    def test_quiet_on_rest_days_done_days_and_behind_the_paywall(self):
+        self.assertIsNone(self.message(2))  # rest
+        WorkoutLog.objects.create(user=self.anna, day=ProgramDay.objects.get(
+            program=self.program, day=3), done_on=START)
+        self.assertIsNone(self.message(3))  # already done
+        self.assertIsNone(self.message(8))  # the free week is over
+        ProgramEnrollment.objects.update(
+            paid_until=START + timedelta(days=30))
+        self.assertIsNotNone(self.message(8))
+
+    def test_a_closed_program_is_quiet(self):
+        self.program.is_published = False
+        self.program.save()
+        self.assertIsNone(self.message(1))
+
+
+class AdminProgramsApiTests(APITestCase):
+
+    def setUp(self):
+        self.boss = make('boss')
+        self.boss.role = User.Roles.ADMIN
+        self.boss.save()
+        self.client.force_authenticate(self.boss)
+
+    def test_write_days_and_open_the_program(self):
+        url = '/api/admin/programs/hyrox/'
+        created = self.client.post(url + 'days/', {
+            'day': 1, 'title': 'Бег и станции', 'base': '## Разминка'},
+            format='json')
+        self.assertEqual(created.status_code, 201)
+        twice = self.client.post(url + 'days/', {
+            'day': 1, 'title': 'x', 'base': 'x'}, format='json')
+        self.assertEqual(twice.status_code, 400)
+        self.client.put(url + 'days/1/', {'easy': 'Легче', 'day': 2},
+                        format='json')
+        row = ProgramDay.objects.get()
+        self.assertEqual((row.day, row.easy), (2, 'Легче'))
+        data = self.client.patch(url, {'is_published': True},
+                                 format='json').json()
+        self.assertTrue(data['is_published'])
+        self.assertEqual(data['days'], [{'day': 2, 'title': 'Бег и станции'}])
+        listed = self.client.get('/api/admin/programs/').json()
+        self.assertEqual(len(listed), 4)
+        self.assertEqual(self.client.delete(url + 'days/2/').status_code, 204)
+
+    def test_clients_cant(self):
+        self.client.force_authenticate(make('anna'))
+        self.assertEqual(
+            self.client.get('/api/admin/programs/').status_code, 403)
+        self.assertEqual(self.client.post(
+            '/api/admin/programs/hyrox/days/',
+            {'day': 1, 'title': 'x', 'base': 'x'}, format='json',
+        ).status_code, 403)

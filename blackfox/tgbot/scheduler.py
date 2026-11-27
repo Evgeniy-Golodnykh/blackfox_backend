@@ -30,6 +30,7 @@ EVENING_REMINDER_AT = dtime(20, 0)
 WEEKLY_AT = dtime(10, 0)
 # «Первые 14 дней»: the day's lesson, after the morning check-in.
 LESSON_AT = dtime(9, 0)
+WORKOUT_AT = dtime(8, 0)
 # A slot missed by more than this (server down) is skipped, not sent at
 # night.
 LATE_LIMIT = timedelta(hours=3)
@@ -82,6 +83,16 @@ def morning_lesson(user, local, today, sent):
     return [(message, today)] if message else []
 
 
+def morning_workout(user, local, today, sent):
+    """A training program: today's workout, once, after 08:00 local."""
+
+    if ('workout', today) in sent or not is_due(local, WORKOUT_AT):
+        return []
+    from programs.bot import workout_message
+    message = workout_message(user, today)
+    return [(message, today)] if message else []
+
+
 def due_messages(user, prefs, now, refresh=True):
     """[(Message, log date)] due for this user right now."""
 
@@ -122,6 +133,7 @@ def due_messages(user, prefs, now, refresh=True):
         if message:
             due.append((message, today))
 
+    due.extend(morning_workout(user, local, today, sent))
     due.extend(morning_lesson(user, local, today, sent))
 
     if (prefs.weekly_report and local.weekday() == 0
